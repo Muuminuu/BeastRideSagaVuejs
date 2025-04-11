@@ -16,7 +16,7 @@ export class AnimalSpirit extends Entity implements Combatant {
         this.stats = stats;
         this.abilities = [];
         this.type = type;
-        this.stage = GrowthStage.Juvenile;
+        this.growthStage = GrowthStage.Juvenile;
         this.experience = 0;
     }
 

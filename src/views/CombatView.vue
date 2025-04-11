@@ -1,13 +1,13 @@
-<!-- src/components/game/CombatView.vue -->
+<!-- src/views/CombatView.vue -->
 <template>
-    <div class="combat-container">
+    <div class="combat-container" v-if="isReady">
       <div class="combat-header">
         {{ locationName }} - {{ timeOfDay }} - {{ season }}
       </div>
       
       <div class="combatants">
         <div class="player-spirit">
-          <div class="name">{{ playerSpirit.name }} ({{ playerSpirit.stage }})</div>
+          <div class="name">{{ playerSpirit.name }} ({{ playerSpirit.growthStage }})</div>
           <div class="health">PV: {{ playerSpirit.stats.currentHealth }}/{{ playerSpirit.stats.maxHealth }}</div>
           <div class="health-bar">
             <div 
@@ -18,7 +18,7 @@
         </div>
         
         <div class="enemy">
-          <div class="name">{{ currentEnemy.name }} Nv.{{ currentEnemy.level }}</div>
+          <div class="name">{{ currentEnemy.name }}</div>
           <div class="health">PV: {{ currentEnemy.stats.currentHealth }}/{{ currentEnemy.stats.maxHealth }}</div>
           <div class="health-bar">
             <div 
@@ -55,10 +55,14 @@
         <button @click="endCombat">Continuer</button>
       </div>
     </div>
+    <div v-else class="loading">
+      Chargement du combat...
+    </div>
   </template>
   
   <script lang="ts">
-  import { defineComponent, ref, computed } from 'vue';
+  import { defineComponent, ref, computed, onMounted } from 'vue';
+  import { useRouter } from 'vue-router';
   import { ActionType } from '@/core/types/Enums';
   import { CombatSystem, CombatState, PlayerAction } from '@/core/systems/CombatSystem';
   import { Hero } from '@/core/entities/Hero';
@@ -67,49 +71,106 @@
   
   export default defineComponent({
     name: 'CombatView',
-    props: {
-      player: {
-        type: Object as () => Hero,
-        required: true
-      },
-      enemies: {
-        type: Array as () => Enemy[],
-        required: true
-      },
-      locationName: {
-        type: String,
-        default: 'Forêt Mystique'
-      },
-      timeOfDay: {
-        type: String,
-        default: 'Jour'
-      },
-      season: {
-        type: String,
-        default: 'Printemps'
-      }
-    },
-    setup(props, { emit }) {
+    setup() {
+      const router = useRouter();
+      const isReady = ref(false);
+      const player = ref<Hero | null>(null);
+      const enemies = ref<Enemy[]>([]);
+      const locationName = ref('Forêt Mystique');
+      const timeOfDay = ref('Jour');
+      const season = ref('Printemps');
+      
       const combatSystem = new CombatSystem();
-      const combatState = ref<CombatState>(combatSystem.initiateCombat(props.player, props.enemies));
+      const combatState = ref<CombatState | null>(null);
       const selectedAction = ref<ActionType | null>(null);
-      
-      const playerSpirit = computed(() => props.player.soulBond!);
-      const currentEnemy = computed(() => combatState.value.enemies[0]);
-      const isPlayerTurn = computed(() => combatState.value.isPlayerTurn);
-      
-      const availableAbilities = computed(() => {
-        return playerSpirit.value.abilities.filter(ability => {
-          // Filtrer les capacités disponibles (pour simplifier l'UI)
-          return true; // Pour débuter, montrons toutes les capacités
-        });
+  
+      // Chargement des données
+      onMounted(() => {
+        try {
+          // Dans une application réelle, utilisez Pinia au lieu de localStorage
+          const storedPlayer = localStorage.getItem('combatPlayer');
+          const storedEnemies = localStorage.getItem('combatEnemies');
+          
+          if (storedPlayer && storedEnemies) {
+            // Reconstruction des objets avec leurs prototypes
+            // Note: Ceci est une simplification, en pratique vous auriez besoin
+            // de reconstruire complètement les objets avec leurs prototypes
+            const playerData = JSON.parse(storedPlayer);
+            const enemiesData = JSON.parse(storedEnemies);
+            
+            // Recréer le Hero avec son prototype
+            player.value = new Hero(
+              playerData.id, 
+              playerData.name, 
+              playerData.stats
+            );
+            
+            // Recréer le SoulBond
+            if (playerData.soulBond) {
+              const spiritData = playerData.soulBond;
+              const spirit = new AnimalSpirit(
+                spiritData.id,
+                spiritData.name,
+                spiritData.type,
+                spiritData.stats
+              );
+              
+              // Ajouter les capacités
+              spirit.abilities = spiritData.abilities;
+              spirit.growthStage = spiritData.growthStage;
+              spirit.experience = spiritData.experience;
+              
+              // Lier l'esprit au héros
+              player.value.bondWithSpirit(spirit);
+            }
+            
+            // Recréer les ennemis
+            enemies.value = enemiesData.map((enemyData: any) => {
+              const enemy = new Enemy(
+                enemyData.id,
+                enemyData.name,
+                enemyData.type,
+                enemyData.stats
+              );
+              
+              enemy.abilities = enemyData.abilities;
+              return enemy;
+            });
+            
+            // Initialiser le combat
+            if (player.value && enemies.value.length > 0) {
+              combatState.value = combatSystem.initiateCombat(player.value, enemies.value);
+              isReady.value = true;
+            }
+          }
+        } catch (error) {
+          console.error('Erreur lors du chargement des données de combat:', error);
+        }
       });
       
+      // Computed properties
+      const playerSpirit = computed(() => {
+        return player.value?.soulBond || null;
+      });
+      
+      const currentEnemy = computed(() => {
+        return combatState.value?.enemies[0] || null;
+      });
+      
+      const isPlayerTurn = computed(() => {
+        return combatState.value?.isPlayerTurn || false;
+      });
+      
+      const availableAbilities = computed(() => {
+        if (!playerSpirit.value) return [];
+        return playerSpirit.value.abilities;
+      });
+      
+      // Méthodes
       function selectAction(action: ActionType) {
         selectedAction.value = action;
         
-        if (action === ActionType.Attack) {
-          // Attaque simple directement sur l'ennemi actuel
+        if (action === ActionType.Attack && currentEnemy.value) {
           executePlayerAction({
             type: ActionType.Attack,
             targetId: currentEnemy.value.id
@@ -122,6 +183,8 @@
       }
       
       function useAbility(ability: Ability) {
+        if (!currentEnemy.value) return;
+        
         executePlayerAction({
           type: ActionType.UseAbility,
           abilityId: ability.id,
@@ -130,30 +193,36 @@
       }
       
       function executePlayerAction(action: PlayerAction) {
-        if (!isPlayerTurn.value) return;
+        if (!isPlayerTurn.value || !combatState.value) return;
         
         // Exécuter l'action du joueur
         combatState.value = combatSystem.executeTurn(combatState.value, action);
         
         // Continuer avec les tours des ennemis jusqu'au prochain tour du joueur ou la fin du combat
-        while (!combatState.value.isPlayerTurn && !combatState.value.combatEnded) {
+        while (combatState.value && !combatState.value.isPlayerTurn && !combatState.value.combatEnded) {
           combatState.value = combatSystem.executeTurn(combatState.value);
         }
       }
       
       function endCombat() {
-        emit('combat-ended', {
-          victory: combatState.value.playerWon,
-          defeatedEnemies: props.enemies.filter(e => !combatState.value.enemies.includes(e))
-        });
+        // Nettoyer les données du combat
+        localStorage.removeItem('combatPlayer');
+        localStorage.removeItem('combatEnemies');
+        
+        // Rediriger vers une autre page
+        router.push('/');
       }
       
       return {
+        isReady,
         combatState,
         playerSpirit,
         currentEnemy,
         isPlayerTurn,
         availableAbilities,
+        locationName,
+        timeOfDay,
+        season,
         selectAction,
         useAbility,
         endCombat,
@@ -161,6 +230,9 @@
       };
     }
   });
+  
+  // Import local à ajouter ici pour éviter une erreur dans le bloc setup
+  import { AnimalSpirit } from '@/core/entities/AnimalSpirit';
   </script>
   
   <style scoped>
@@ -273,5 +345,11 @@
     border-radius: 4px;
     cursor: pointer;
     font-size: 16px;
+  }
+  
+  .loading {
+    text-align: center;
+    padding: 50px;
+    font-size: 18px;
   }
   </style>

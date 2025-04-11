@@ -21,6 +21,11 @@ const router = createRouter({
       path: '/combat',
       name: 'combat',
       component: () => import('../views/CombatView.vue'),
+    },
+    {
+      path: '/test-combat',
+      name: 'test-combat',
+      component: () => import('../views/TestCombatView.vue'),
     }
   ],
 })
