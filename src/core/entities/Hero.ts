@@ -10,7 +10,7 @@ export class Hero extends Character {
         this.soulBond = null;
     }
 
-    bondWithSpirit(spirit: Animalspirit): void {
+    bondWithSpirit(spirit: AnimalSpirit): void {
         this.soulBond = spirit;
     }
 
