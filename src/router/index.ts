@@ -1,3 +1,4 @@
+// src/router/index.ts
 import { createRouter, createWebHistory } from 'vue-router'
 import { useGameStore } from '@/stores/game'
 
@@ -13,6 +14,12 @@ const router = createRouter({
       path: '/world',
       name: 'world',
       component: () => import('../views/WorldView.vue'),
+      meta: { requiresPlayer: true }
+    },
+    {
+      path: '/exploration',
+      name: 'exploration',
+      component: () => import('../views/ExplorationView.vue'),
       meta: { requiresPlayer: true }
     },
     {
