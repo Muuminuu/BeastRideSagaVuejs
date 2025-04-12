@@ -1,124 +1,119 @@
-<script setup lang="ts">
-import { RouterLink, RouterView } from 'vue-router'
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
-import { useGameStore } from './stores/game'
-
-const route = useRoute()
-const gameStore = useGameStore()
-
-// Hide header on intro screen
-const showHeader = computed(() => route.name !== 'intro')
-const playerName = computed(() => gameStore.player?.name || '')
-</script>
-
 <template>
-  <header v-if="showHeader">
-    <img alt="Beast Ride Saga logo" class="logo" src="@/assets/logo.svg" width="125" height="125" />
-
-    <div class="wrapper">
-      <div class="player-info" v-if="playerName">
-        <span class="player-name">{{ playerName }}</span>
-        <span v-if="gameStore.player?.soulBond" class="spirit-name">
-          | {{ gameStore.player.soulBond.name }} ({{ gameStore.player.soulBond.growthStage }})
-        </span>
+  <div class="game-container">
+    <h1>Carte RPG Old School</h1>
+    <RPGMap
+      :mapData="mapData"
+      :playerPosition="playerPosition"
+      @move="movePlayer"
+    />
+    <div class="controls">
+      <button @click="movePlayer('up')">↑</button>
+      <div class="horizontal-controls">
+        <button @click="movePlayer('left')">←</button>
+        <button @click="movePlayer('right')">→</button>
       </div>
-
-      <nav>
-        <RouterLink to="/world">Monde</RouterLink>
-        <RouterLink to="/test-combat">Test Combat</RouterLink>
-      </nav>
+      <button @click="movePlayer('down')">↓</button>
     </div>
-  </header>
-
-  <RouterView />
+  </div>
 </template>
 
+<script lang="ts">
+import { defineComponent, ref } from 'vue';
+import RPGMap from './components/RPGMap.vue';
+import { MapTile, Position, Direction, TileType } from './types';
+import { generateMap } from './utils/mapGenerator';
+
+export default defineComponent({
+  name: 'App',
+  components: {
+    RPGMap
+  },
+  setup() {
+    // Générer la carte
+    const mapSize = { width: 20, height: 15 };
+    const mapData = ref<MapTile[][]>(generateMap(mapSize.width, mapSize.height));
+    
+    // Position initiale du joueur (milieu de la carte)
+    const playerPosition = ref<Position>({
+      x: Math.floor(mapSize.width / 2),
+      y: Math.floor(mapSize.height / 2)
+    });
+
+    // Fonction pour déplacer le joueur
+    const movePlayer = (direction: Direction) => {
+      const newPos = { ...playerPosition.value };
+      
+      switch (direction) {
+        case 'up':
+          newPos.y = Math.max(0, newPos.y - 1);
+          break;
+        case 'down':
+          newPos.y = Math.min(mapSize.height - 1, newPos.y + 1);
+          break;
+        case 'left':
+          newPos.x = Math.max(0, newPos.x - 1);
+          break;
+        case 'right':
+          newPos.x = Math.min(mapSize.width - 1, newPos.x + 1);
+          break;
+      }
+      
+      // Vérifier si la nouvelle position est accessible
+      if (mapData.value[newPos.y][newPos.x].type !== TileType.Wall) {
+        playerPosition.value = newPos;
+      }
+    };
+
+    return {
+      mapData,
+      playerPosition,
+      movePlayer
+    };
+  }
+});
+</script>
+
 <style scoped>
-header {
-  line-height: 1.5;
-  max-height: 100vh;
-  padding: 1rem;
-  background-color: rgba(44, 62, 80, 0.05);
-  margin-bottom: 1rem;
-}
-
-.logo {
-  display: block;
-  margin: 0 auto 1rem;
-}
-
-.player-info {
+.game-container {
+  font-family: 'Press Start 2P', monospace;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
   text-align: center;
-  margin-bottom: 1rem;
-  padding: 0.5rem;
-  background-color: rgba(65, 184, 131, 0.1);
-  border-radius: 4px;
 }
 
-.player-name {
-  font-weight: bold;
-  color: #2c3e50;
+h1 {
+  color: #4a4a4a;
+  margin-bottom: 20px;
+  font-size: 24px;
 }
 
-.spirit-name {
-  color: #41b883;
-  margin-left: 0.5rem;
+.controls {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
 }
 
-nav {
-  width: 100%;
-  font-size: 12px;
-  text-align: center;
-  margin-top: 1rem;
+.horizontal-controls {
+  display: flex;
+  gap: 50px;
 }
 
-nav a.router-link-exact-active {
-  color: var(--color-text);
+button {
+  width: 50px;
+  height: 50px;
+  font-size: 20px;
+  background-color: #7b68ee;
+  color: white;
+  border: 2px solid #5a48ce;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: 'Press Start 2P', monospace;
 }
 
-nav a.router-link-exact-active:hover {
-  background-color: transparent;
-}
-
-nav a {
-  display: inline-block;
-  padding: 0 1rem;
-  border-left: 1px solid var(--color-border);
-}
-
-nav a:first-of-type {
-  border: 0;
-}
-
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
-
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
-
-  .player-info {
-    text-align: left;
-    margin-bottom: 0;
-  }
-
-  nav {
-    text-align: left;
-    margin-left: -1rem;
-    font-size: 1rem;
-    padding: 1rem 0;
-    margin-top: 1rem;
-  }
+button:hover {
+  background-color: #6a5acd;
 }
 </style>
