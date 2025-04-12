@@ -20,8 +20,6 @@ import type {
   ServiceType 
 } from '@/core/world/WorldMapSystem'
 
-// Reste du code...
-
 export interface WorldPosition {
   x: number
   y: number
@@ -64,17 +62,13 @@ export const useGameStore = defineStore('game', () => {
   // État du jeu
   const player = ref<Hero | null>(null)
   const worldMap = ref<WorldMap | null>(null)
-
-  const worldRegions = ref<WorldRegion[]>([])
-  const currentRegionId = ref<string>('')
-  const currentPosition = ref({ x: 0, y: 0 })
-
-  const currentRegion = computed(() => {
-    return worldRegions.value.find(r => r.id === currentRegionId.value) || null
-  })
-
   const inventory = ref<InventoryItem[]>([])
   const gold = ref(0)
+  
+  // État de la carte du monde
+  const worldRegions = ref<WorldRegion[]>([])
+  const currentRegionId = ref<string>('')
+  const currentPosition = ref<WorldPosition>({ x: 0, y: 0 })
   
   // État du temps et des saisons
   const currentGameTime = ref(GameTime.Morning)
@@ -102,6 +96,10 @@ export const useGameStore = defineStore('game', () => {
   
   const playerMaxHealth = computed(() => {
     return player.value?.soulBond?.stats.maxHealth || 0
+  })
+  
+  const currentRegion = computed(() => {
+    return worldRegions.value.find(r => r.id === currentRegionId.value) || null
   })
   
   // Méthodes
@@ -136,6 +134,19 @@ export const useGameStore = defineStore('game', () => {
       
       // Mise à jour de la météo (simplifiée pour l'exemple)
       updateWeather()
+    }
+  }
+  
+  function moveToRegion(regionId: string) {
+    currentRegionId.value = regionId
+    const region = worldRegions.value.find(r => r.id === regionId)
+    
+    if (region) {
+      // Mise à jour de la position courante
+      currentPosition.value = region.position
+      
+      // Marquer la région comme explorée
+      region.explored = true
     }
   }
   
@@ -299,6 +310,9 @@ export const useGameStore = defineStore('game', () => {
       try {
         localStorage.setItem('beast_ride_player', JSON.stringify(player.value))
         localStorage.setItem('beast_ride_world_map', JSON.stringify(worldMap.value))
+        localStorage.setItem('beast_ride_world_regions', JSON.stringify(worldRegions.value))
+        localStorage.setItem('beast_ride_current_region', currentRegionId.value)
+        localStorage.setItem('beast_ride_current_position', JSON.stringify(currentPosition.value))
         localStorage.setItem('beast_ride_game_state', JSON.stringify({
           inventory: inventory.value,
           gold: gold.value,
@@ -323,6 +337,9 @@ export const useGameStore = defineStore('game', () => {
     try {
       const savedPlayer = localStorage.getItem('beast_ride_player')
       const savedWorldMap = localStorage.getItem('beast_ride_world_map')
+      const savedWorldRegions = localStorage.getItem('beast_ride_world_regions')
+      const savedCurrentRegion = localStorage.getItem('beast_ride_current_region')
+      const savedCurrentPosition = localStorage.getItem('beast_ride_current_position')
       const savedGameState = localStorage.getItem('beast_ride_game_state')
       
       if (savedPlayer && savedWorldMap && savedGameState) {
@@ -356,6 +373,19 @@ export const useGameStore = defineStore('game', () => {
         
         player.value = hero
         worldMap.value = worldMapData
+        
+        // Charger les données de région si elles existent
+        if (savedWorldRegions) {
+          worldRegions.value = JSON.parse(savedWorldRegions)
+        }
+        
+        if (savedCurrentRegion) {
+          currentRegionId.value = savedCurrentRegion
+        }
+        
+        if (savedCurrentPosition) {
+          currentPosition.value = JSON.parse(savedCurrentPosition)
+        }
         
         // Restaurer les autres états
         inventory.value = gameStateData.inventory
@@ -406,6 +436,9 @@ export const useGameStore = defineStore('game', () => {
     // État
     player,
     worldMap,
+    worldRegions,
+    currentRegionId,
+    currentPosition,
     inventory,
     gold,
     currentGameTime,
@@ -420,12 +453,14 @@ export const useGameStore = defineStore('game', () => {
     // Propriétés calculées
     playerHealth,
     playerMaxHealth,
+    currentRegion,
     
     // Actions
     setPlayer,
     setWorldMap,
     initializeWorld,
     advanceTime,
+    moveToRegion,
     createRandomEnemy,
     addItemToInventory,
     removeItemFromInventory,
