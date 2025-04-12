@@ -1,6 +1,6 @@
 <template>
   <div class="game-container">
-    <h1>Carte RPG Old School</h1>
+    <h1>Beast Ride Saga</h1>
     <RPGMap
       :mapData="mapData"
       :playerPosition="playerPosition"
@@ -59,7 +59,7 @@ export default defineComponent({
       }
       
       // Vérifier si la nouvelle position est accessible
-      if (mapData.value[newPos.y][newPos.x].type !== TileType.Wall) {
+      if (mapData.value[newPos.y][newPos.x].walkable) {
         playerPosition.value = newPos;
       }
     };
@@ -93,27 +93,35 @@ h1 {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
+  gap: 10px;
 }
 
 .horizontal-controls {
   display: flex;
   gap: 50px;
+  margin: 5px 0;
 }
 
 button {
-  width: 50px;
-  height: 50px;
-  font-size: 20px;
+  width: 60px;
+  height: 60px;
+  font-size: 24px;
   background-color: #7b68ee;
   color: white;
-  border: 2px solid #5a48ce;
+  border: 3px solid #5a48ce;
   border-radius: 8px;
   cursor: pointer;
-  font-family: 'Press Start 2P', monospace;
+  font-family: inherit;
+  transition: all 0.2s ease;
 }
 
 button:hover {
   background-color: #6a5acd;
+  transform: scale(1.05);
+}
+
+button:active {
+  transform: scale(0.95);
+  background-color: #5a48ce;
 }
 </style>

@@ -76,11 +76,3 @@ export function generateMap(width: number, height: number): MapTile[][] {
 
   return map;
 }
-
-// Vous pourriez également ajouter :
-// - Fichier: store.ts (pour utiliser Vuex/Pinia)
-// - Fichier: assets/sprites pour les sprites
-// - Système d'événements sur les cases
-// - Système de combat
-// - Inventaire
-// - Quêtes

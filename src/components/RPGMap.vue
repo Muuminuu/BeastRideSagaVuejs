@@ -14,6 +14,7 @@
             { 'player-position': isPlayerPosition(x, y) }
           ]"
           @click="handleTileClick(x, y)"
+          :title="tile.description"
         >
           <div v-if="isPlayerPosition(x, y)" class="player-sprite"></div>
         </div>
@@ -75,6 +76,7 @@
     border: 4px solid #333;
     background-color: #222;
     padding: 2px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
   }
   
   .map-row {
