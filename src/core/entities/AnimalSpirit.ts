@@ -4,6 +4,7 @@ import type { Stats } from '../types/Stats';
 import type { Ability } from '../types/Ability';
 import { TypeEffectiveness } from '../types/ElementalTypes';
 import { ElementType, AnimalClass } from '../types/ElementalTypes';
+import { DamageType } from '../types/Enums';
 
 export enum GrowthStage {
   Juvenile = 'juvenile',
@@ -30,37 +31,30 @@ export class AnimalSpirit extends Entity implements Combatant {
     this.experience = 0;
   }
   
-  takeDamage(amount: number, type: DamageType): { damage: number; effectiveness: number } {
-    // Conversion de DamageType vers ElementType
-    const elementType = this.convertDamageTypeToElementType(type);
-    
+  takeDamage(amount: number, type: ElementType): void {
     // Calcul des dégâts avec prise en compte des efficacités
-    const effectiveness = TypeEffectiveness[elementType][this.elementType];
+    const effectiveness = TypeEffectiveness[type][this.elementType];
     const adjustedDamage = Math.floor(amount * effectiveness);
     this.stats.currentHealth = Math.max(0, this.stats.currentHealth - adjustedDamage);
-    
-    return {
-      damage: adjustedDamage,
-      effectiveness: effectiveness
-    };
   }
   
-  useAbility(ability: Ability, target: Combatant): { damage: number; effectiveness: number } | void {
+  useAbility(ability: Ability, target: Combatant): void {
     if (ability.currentCooldown > 0) return;
     
     // Calcul des dégâts basé sur l'attaque et la puissance de la capacité
     const baseDamage = Math.floor(ability.power * (this.stats.attack / 100));
     
+    // Convertir DamageType en ElementType
+    const elementType = this.convertDamageTypeToElementType(ability.damageType);
+    
     // Appliquer les dégâts à la cible
-    const result = target.takeDamage(baseDamage, ability.damageType);
+    target.takeDamage(baseDamage, elementType);
     
     // Mettre la capacité en cooldown
     ability.currentCooldown = ability.cooldown;
-    
-    return result;
   }
   
-  // Ajouter cette méthode utilitaire dans la classe
+  // Ajouter la méthode de conversion
   private convertDamageTypeToElementType(damageType: DamageType): ElementType {
     switch (damageType) {
       case DamageType.Physical: return ElementType.Normal;
