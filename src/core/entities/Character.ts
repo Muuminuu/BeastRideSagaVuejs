@@ -1,7 +1,7 @@
 import { Entity } from './Entity';
-import { Combatant } from './Combatant';
-import { Stats } from '../types/Stats';
-import { Ability } from '../types/Ability';
+import type { Combatant } from './Combatant';
+import type { Stats } from '../types/Stats';
+import type { Ability } from '../types/Ability';
 import { ElementType } from '../types/ElementalTypes';
 
 export abstract class Character extends Entity implements Combatant {

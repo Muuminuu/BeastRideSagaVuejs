@@ -1,6 +1,6 @@
 import { Character } from './Character';
 import { AnimalSpirit } from './AnimalSpirit';
-import { Stats } from '../types/Stats';
+import type { Stats } from '../types/Stats';
 
 export class Hero extends Character {
   soulBond: AnimalSpirit | null;

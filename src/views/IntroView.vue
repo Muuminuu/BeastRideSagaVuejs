@@ -199,7 +199,8 @@
             selectedSpirit.id,
             selectedSpirit.name,
             selectedSpirit.type as AnimalType,
-            selectedSpirit.stats
+            selectedSpirit.stats,
+            selectedSpirit.description,
           );
   
           // Ajouter les capacités à l'esprit animal

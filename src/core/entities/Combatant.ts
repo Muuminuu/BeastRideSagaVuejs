@@ -1,8 +1,8 @@
 // src/core/entities/Combatant.ts
 import { Entity } from './Entity';
 import { ElementType } from '../types/ElementalTypes';
-import { Stats } from '../types/Stats';
-import { Ability } from '../types/Ability';
+import type { Stats } from '../types/Stats';
+import type { Ability } from '../types/Ability';
 
 export interface Combatant {
   stats: Stats;
