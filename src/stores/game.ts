@@ -5,17 +5,22 @@ import { Hero } from '@/core/entities/Hero'
 import { Enemy } from '@/core/entities/Enemy'
 import { AnimalSpirit } from '@/core/entities/AnimalSpirit'
 import { 
-  WorldMap, 
-  TerrainType, 
-  BiomeType, 
   EnemyType, 
   DamageType, 
   TargetType 
 } from '@/core/types/Enums'
 import { 
-  WorldMap as WorldMapType,
+  TerrainType, 
+  BiomeType, 
   WorldMapGenerator 
 } from '@/core/world/WorldMapSystem'
+
+import type { 
+  WorldMap,
+  ServiceType 
+} from '@/core/world/WorldMapSystem'
+
+// Reste du code...
 
 export interface WorldPosition {
   x: number

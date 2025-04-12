@@ -57,20 +57,23 @@ export enum TerrainType {
     description: string;
   }
   
-  export interface PointOfInterest {
-    id: string;
-    name: string;
-    type: 'town' | 'village' | 'dungeon' | 'shrine' | 'landmark';
-    description: string;
-    x: number;
-    y: number;
-    discovered: boolean;
-    explored: boolean;
-    // Attributs spécifiques pour les différents types de points d'intérêt
-    services?: ('inn' | 'shop' | 'blacksmith' | 'temple' | 'guild')[];
-    questGivers?: string[]; // IDs des PNJs pouvant donner des quêtes ici
-    connectedTo?: string[]; // IDs d'autres points d'intérêt directement reliés
-  }
+  // Définir les types de services disponibles pour éviter les problèmes de typage
+export type ServiceType = 'inn' | 'shop' | 'blacksmith' | 'temple' | 'guild';
+
+export interface PointOfInterest {
+  id: string;
+  name: string;
+  type: 'town' | 'village' | 'dungeon' | 'shrine' | 'landmark';
+  description: string;
+  x: number;
+  y: number;
+  discovered: boolean;
+  explored: boolean;
+  // Utiliser le type ServiceType[] au lieu de string[]
+  services?: ServiceType[];
+  questGivers?: string[]; // IDs des PNJs pouvant donner des quêtes ici
+  connectedTo?: string[]; // IDs d'autres points d'intérêt directement reliés
+}
   
   export interface WorldMap {
     width: number; // Largeur totale de la carte en tiles

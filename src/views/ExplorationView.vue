@@ -20,7 +20,7 @@
       
       <div class="exploration-main">
         <GameWorldMap 
-          v-if="worldMapReady" 
+          v-if="worldMapReady && worldMap" 
           :worldMap="worldMap" 
           @move="handlePlayerMove"
           @enter-location="handleEnterLocation"
@@ -52,7 +52,7 @@
       </div>
       
       <!-- Dialogue de location (entrée dans un point d'intérêt) -->
-      <div class="location-modal" v-if="showLocationModal">
+      <div class="location-modal" v-if="showLocationModal && currentLocation">
         <div class="modal-content">
           <h3>{{ currentLocation.name }}</h3>
           <div class="location-description">
@@ -94,15 +94,23 @@
   
   <script setup lang="ts">
   import { ref, computed, onMounted } from 'vue'
-  import { useRouter } from 'vue-router'
-  import GameWorldMap from '@/components/GameWorldMap.vue'
-  import { useGameStore, GameTime, Season } from '@/stores/game.ts'
-  import { 
-    WorldMap, 
+    import { useRouter } from 'vue-router'
+    import GameWorldMap from '@/components/GameWorldMap.vue'
+    import { useGameStore, GameTime, Season } from '@/stores/game.ts'
+    import { 
+    TerrainType,
+    BiomeType,
     WorldMapGenerator, 
-    WorldMapManager,
-    PointOfInterest
-  } from '@/core/world/WorldMapSystem'
+    WorldMapManager
+    } from '@/core/world/WorldMapSystem'
+
+// Importer les types séparément
+import type { 
+  WorldMap, 
+  PointOfInterest,
+  ServiceType
+} from '@/core/world/WorldMapSystem'
+
   
   const router = useRouter()
   const gameStore = useGameStore()
@@ -631,7 +639,7 @@
     }
   }
   
-  function getServiceName(service: string): string {
+  function getServiceName(service: ServiceType): string {
     const names: Record<string, string> = {
       'inn': 'Auberge',
       'shop': 'Magasin',
@@ -640,7 +648,7 @@
       'guild': 'Guilde'
     }
     
-    return names[service] || service
+    return names[service]
   }
   </script>
   

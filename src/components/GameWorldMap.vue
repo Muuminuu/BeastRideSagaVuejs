@@ -185,11 +185,14 @@
   
   <script setup lang="ts">
   import { ref, computed, onMounted, watch } from 'vue'
-  import type { 
-    WorldMap, 
-    WorldMapManager, 
+  import { 
     TerrainType, 
     BiomeType, 
+    WorldMapManager
+  } from '@/core/world/WorldMapSystem'
+  
+  import type { 
+    WorldMap, 
     WorldTile,
     Region,
     PointOfInterest
@@ -792,3 +795,4 @@
       font-size: 16px;
     }
   }
+  </style>
