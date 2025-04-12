@@ -23,8 +23,9 @@
   </template>
   
   <script lang="ts">
-  import { defineComponent, PropType } from 'vue';
-  import { MapTile, Position, Direction } from '../types';
+  import { defineComponent } from 'vue';
+  import type { PropType } from 'vue';
+  import type { MapTile, Position, Direction } from '@/types';
   
   export default defineComponent({
     name: 'RPGMap',

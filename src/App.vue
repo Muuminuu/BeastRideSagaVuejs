@@ -19,9 +19,9 @@
 
 <script lang="ts">
 import { defineComponent, ref } from 'vue';
-import RPGMap from './components/RPGMap.vue';
-import { MapTile, Position, Direction, TileType } from './types';
-import { generateMap } from './utils/mapGenerator';
+import RPGMap from '@/components/RPGMap.vue';
+import type { MapTile, Position, Direction } from '@/types';
+import { generateMap } from '@/utils/mapGenerator';
 
 export default defineComponent({
   name: 'App',

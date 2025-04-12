@@ -1,4 +1,5 @@
-import { MapTile, TileType } from '../types';
+import type { MapTile } from '@/types';
+import { TileType } from '@/types';
 
 export function generateMap(width: number, height: number): MapTile[][] {
   const map: MapTile[][] = [];
