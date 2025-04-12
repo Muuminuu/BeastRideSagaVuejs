@@ -1,7 +1,8 @@
 import { Entity } from './Entity';
-import { Combatant } from './Combatant';
-import { Stats } from '../types/Stats';
-import { Ability } from '../types/Ability';
+import type { Combatant } from './Combatant';
+import type { Stats } from '../types/Stats';
+import type { Ability } from '../types/Ability';
+import { TypeEffectiveness } from '../types/ElementalTypes';
 import { ElementType, AnimalClass } from '../types/ElementalTypes';
 
 export enum GrowthStage {
@@ -29,7 +30,7 @@ export class AnimalSpirit extends Entity implements Combatant {
     this.experience = 0;
   }
   
-  takeDamage(amount: number, type: ElementType): void {
+  takeDamage(amount: number, type: ElementType): { damage: number; effectiveness: number } {
     // Calcul des dégâts avec prise en compte des efficacités
     const effectiveness = TypeEffectiveness[type][this.elementType];
     const adjustedDamage = Math.floor(amount * effectiveness);
@@ -48,7 +49,7 @@ export class AnimalSpirit extends Entity implements Combatant {
     const baseDamage = Math.floor(ability.power * (this.stats.attack / 100));
     
     // Appliquer les dégâts à la cible
-    const result = target.takeDamage(baseDamage, ability.elementType);
+    const result = target.takeDamage(baseDamage, ability.damageType);
     
     // Mettre la capacité en cooldown
     ability.currentCooldown = ability.cooldown;

@@ -63,7 +63,7 @@ export enum BiomeType {
           const seasons = Object.values(Season);
           const currentSeasonIndex = seasons.indexOf(this.currentSeason);
           this.currentSeason = seasons[(currentSeasonIndex + 1) % seasons.length];
-        }
+        } 
       }
       
       return this.currentTime;
