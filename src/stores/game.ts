@@ -292,11 +292,16 @@ export const useGameStore = defineStore('game', {
             break;
             
           case EntityType.NPC:
-            this.addMessage(`${currentTile.entity.name || 'Quelqu\'un'} vous dit : "${currentTile.entity.interaction || 'Bonjour !'}"`);
+            // Correction de l'erreur TS2532 - vérifier si les propriétés existent avant de les utiliser
+            const npcName = currentTile.entity.name || 'Quelqu\'un';
+            const npcInteraction = currentTile.entity.interaction || 'Bonjour !';
+            this.addMessage(`${npcName} vous dit : "${npcInteraction}"`);
             break;
             
           case EntityType.Item:
-            this.addMessage(`Vous trouvez : ${currentTile.entity.name || 'Un objet'}`);
+            // Correction de l'erreur TS2532 - vérifier si les propriétés existent avant de les utiliser
+            const itemName = currentTile.entity.name || 'Un objet';
+            this.addMessage(`Vous trouvez : ${itemName}`);
             
             // Ajouter à l'inventaire
             const newItem: Item = {
@@ -314,8 +319,11 @@ export const useGameStore = defineStore('game', {
             break;
             
           case EntityType.Portal:
-            this.addMessage(`Vous avez trouvé un portail mystérieux : ${currentTile.entity.name || 'Portail'}`);
-            this.addMessage(currentTile.entity.interaction || 'Ce portail semble mener vers un autre endroit...');
+            // Correction de l'erreur TS2532 - vérifier si les propriétés existent avant de les utiliser
+            const portalName = currentTile.entity.name || 'Portail';
+            const portalInteraction = currentTile.entity.interaction || 'Ce portail semble mener vers un autre endroit...';
+            this.addMessage(`Vous avez trouvé un portail mystérieux : ${portalName}`);
+            this.addMessage(portalInteraction);
             
             // Logique de téléportation pourrait être ajoutée ici
             // Pour l'instant, nous laissons le portail intact pour permettre plusieurs utilisations

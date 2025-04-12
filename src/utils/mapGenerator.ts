@@ -1,6 +1,7 @@
 import type { MapTile } from '@/types';
 import { EntityType, TileType } from '@/types';
 
+
 // Structure pour stocker les zones climatiques et d'altitude
 interface MapZone {
   altitude: number; // 0-100 (0 = profondeur océanique, 100 = haute montagne)
@@ -614,16 +615,17 @@ function findPath(
 }
 
 // Ajouter des entités et des points d'intérêt
+// Remplacer la fonction addEntitiesAndPOIs qui est incomplète
 function addEntitiesAndPOIs(map: MapTile[][], width: number, height: number, worldData: MapZone[][]): void {
-  // Ajouter des villages/villes aux carrefours ou près des ressources
-  addSettlements(map, width, height, worldData);
-  
-  // Ajouter des ruines et structures anciennes
-  addRuinsToMap(map, width, height, worldData);
-  
-  // Ajouter des PNJ, trésors et autres entités
-  addEntitiesToMap(map, width, height);
-}
+    // Ajouter des villages/villes aux carrefours ou près des ressources
+    addSettlements(map, width, height, worldData);
+    
+    // Ajouter des ruines et structures anciennes
+    // addRuinsToMap(map, width, height, worldData);
+    
+    // // Ajouter des PNJ, trésors et autres entités
+    // addEntitiesToMap(map, width, height);
+  }
 
 // Ajouter des villages et campements
 function addSettlements(map: MapTile[][], width: number, height: number, worldData: MapZone[][]): void {
@@ -673,3 +675,74 @@ function addSettlements(map: MapTile[][], width: number, height: number, worldDa
           }
         }
       }
+// Fin du code pour la fonction addSettlements
+
+      // Bonus pour la proximité des chemins
+      if (pathCount > 0) {
+        score += pathCount * 2;
+      }
+      
+      // Bonus pour la proximité de l'eau
+      if (hasWaterNearby) {
+        score += 15;
+      }
+      
+      // Éviter les endroits trop proches d'autres établissements
+      let tooClose = false;
+      for (const settlement of settlements) {
+        const distance = Math.sqrt((x - settlement.x) ** 2 + (y - settlement.y) ** 2);
+        if (distance < width / 10) {
+          tooClose = true;
+          break;
+        }
+      }
+      
+      if (tooClose) {
+        continue;
+      }
+      
+      // Mettre à jour le meilleur emplacement
+      if (score > bestScore) {
+        bestScore = score;
+        bestX = x;
+        bestY = y;
+      }
+    }
+    
+    // Si on a trouvé un bon emplacement, l'ajouter
+    if (bestX !== -1 && bestY !== -1) {
+      settlements.push({ x: bestX, y: bestY });
+      
+      // Créer l'établissement
+      map[bestY][bestX] = {
+        type: TileType.Path,
+        walkable: true,
+        description: 'Un petit village',
+        entity: {
+          type: EntityType.NPC,
+          name: 'Villageois',
+          interaction: 'Bienvenue dans notre village, voyageur !'
+        }
+      };
+      
+      // Ajouter quelques maisons autour
+      for (let i = 0; i < 3; i++) {
+        const dx = Math.floor(Math.random() * 3) - 1;
+        const dy = Math.floor(Math.random() * 3) - 1;
+        
+        if (dx === 0 && dy === 0) continue;
+        
+        const nx = (bestX + dx + width) % width;
+        const ny = (bestY + dy + height) % height;
+        
+        if (map[ny][nx].walkable) {
+          map[ny][nx] = {
+            type: TileType.Path,
+            walkable: true,
+            description: 'Une petite maison'
+          };
+        }
+      }
+    }
+  }
+}
