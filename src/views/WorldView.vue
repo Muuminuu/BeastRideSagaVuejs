@@ -69,6 +69,8 @@
   
   const router = useRouter()
   const gameStore = useGameStore()
+
+  const currentPosition = ref({ x: 0, y: 0 })
   
   // Exploration state
   const isExploring = ref(false)
@@ -202,13 +204,6 @@
     return (dx === 1 && dy === 0) || (dx === 0 && dy === 1)
   }
   
-  function isRegionAdjacent(region: WorldRegion): boolean {
-    return worldRegions.value.some(r => 
-      r.explored && 
-      areRegionsAdjacent(r, region)
-    )
-  }
-  
   function handleZoneSelection(zoneId: string) {
     const regionId = zoneId.split('_')[0]
     moveToRegion(regionId)
@@ -286,11 +281,14 @@
     const region = worldRegions.value.find(r => r.id === regionId)
     
     if (region) {
-      // Mise à jour de la position courante
-      currentPosition.value = region.position
-      
-      // Marquer la région comme explorée
-      region.explored = true
+        // Mise à jour de la position courante
+        currentPosition.value = region.position
+        
+        // Marquer la région comme explorée
+        const regionToUpdate = gameStore.worldRegions.find(r => r.id === regionId)
+        if (regionToUpdate) {
+        regionToUpdate.explored = true
+        }
     }
   }
   

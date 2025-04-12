@@ -777,6 +777,11 @@
     margin-right: 8px;
     border: 1px solid white;
   }
+
+  .empty-rule {
+    /* Commentez pourquoi cette règle existe ou ajoutez des propriétés */
+    display: none; /* ou toute autre propriété nécessaire */
+  }
   
   /* Media queries pour la responsivité */
   @media (max-width: 768px) {
