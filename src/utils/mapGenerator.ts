@@ -1,418 +1,679 @@
 import type { MapTile } from '@/types';
-import { TileType } from '@/types';
+import { EntityType, TileType } from '@/types';
 
-// Fonction pour générer une carte plus naturelle et cohérente
-import { EntityType } from '@/types';
+// Structure pour stocker les zones climatiques et d'altitude
+interface MapZone {
+  altitude: number; // 0-100 (0 = profondeur océanique, 100 = haute montagne)
+  humidity: number; // 0-100 (0 = aride, 100 = très humide)
+  temperature: number; // 0-100 (0 = glacial, 100 = très chaud)
+}
 
+// Générer une carte réaliste
 export function generateMap(width: number, height: number): MapTile[][] {
-  const map: MapTile[][] = [];
+  // Taille significativement augmentée
+  const worldWidth = Math.max(width, 100);
+  const worldHeight = Math.max(height, 80);
   
-  // Initialiser une carte vide avec de l'herbe partout
-  for (let y = 0; y < height; y++) {
-    const row: MapTile[] = [];
-    for (let x = 0; x < width; x++) {
-      row.push({ 
-        type: TileType.Grass, 
-        walkable: true,
-        description: 'Une zone d\'herbe luxuriante' 
-      });
-    }
-    map.push(row);
-  }
-
-  // Ajouter des bordures de murs
-  addBorders(map, width, height);
+  // 1. Générer la topographie et le climat de base
+  const worldData: MapZone[][] = generateWorldData(worldWidth, worldHeight);
   
-  // Générer des biomes cohérents
-  generateBiomes(map, width, height);
+  // 2. Convertir les données climatiques en types de terrain
+  const map: MapTile[][] = convertWorldDataToTerrain(worldData);
   
-  // Ajouter des chemins
-  generatePaths(map, width, height);
+  // 3. Ajouter des chemins naturels, routes et rivières
+  addPathsAndRivers(map, worldWidth, worldHeight, worldData);
   
-  // Ajouter quelques obstacles aléatoires (montagnes, rochers, etc.)
-  addRandomObstacles(map, width, height);
-  
-  // Ajouter des entités sur la carte
-  addEntities(map, width, height);
+  // 4. Ajouter des points d'intérêt et des entités
+  addEntitiesAndPOIs(map, worldWidth, worldHeight, worldData);
   
   return map;
 }
 
-// Ajouter des bordures de murs autour de la carte
-function addBorders(map: MapTile[][], width: number, height: number): void {
-  for (let x = 0; x < width; x++) {
-    map[0][x] = { 
-      type: TileType.Wall, 
-      walkable: false, 
-      description: 'Un mur infranchissable'
-    };
-    map[height - 1][x] = { 
-      type: TileType.Wall, 
-      walkable: false, 
-      description: 'Un mur infranchissable'
-    };
-  }
+// Génère les données de base pour l'altitude, l'humidité et la température
+function generateWorldData(width: number, height: number): MapZone[][] {
+  const worldData: MapZone[][] = [];
   
+  // Initialiser avec des valeurs aléatoires de base
   for (let y = 0; y < height; y++) {
-    map[y][0] = { 
-      type: TileType.Wall, 
-      walkable: false, 
-      description: 'Un mur infranchissable'
-    };
-    map[y][width - 1] = { 
-      type: TileType.Wall, 
-      walkable: false, 
-      description: 'Un mur infranchissable'
-    };
+    const row: MapZone[] = [];
+    for (let x = 0; x < width; x++) {
+      row.push({
+        altitude: 0,
+        humidity: 0,
+        temperature: 0
+      });
+    }
+    worldData.push(row);
+  }
+  
+  // Générer le terrain avec un algorithme de bruit cohérent
+  generateTerrain(worldData, width, height);
+  
+  // Appliquer des règles climatiques basées sur la latitude et l'altitude
+  applyClimateRules(worldData, width, height);
+  
+  // Lisser les transitions entre les différentes zones
+  smoothTransitions(worldData, width, height);
+  
+  return worldData;
+}
+
+// Génère le terrain en utilisant un algorithme simplifié de bruit cohérent
+function generateTerrain(worldData: MapZone[][], width: number, height: number): void {
+  // Paramètres pour la génération de terrain
+  const numSeedPoints = Math.floor(width * height * 0.001); // 0.1% de points de départ
+  const iterationsPasses = 5; // Nombre de passes pour lisser le terrain
+  
+  // Placer des "pics" et des "vallées" comme points de départ
+  const seedPoints: Array<{x: number, y: number, altitude: number}> = [];
+  
+  // Créer des chaînes de montagnes et des vallées
+  const numMountainRanges = Math.floor(width / 25); // Une chaîne tous les 25 tuiles
+  
+  for (let i = 0; i < numMountainRanges; i++) {
+    // Point de départ de la chaîne de montagnes
+    const startX = Math.floor(Math.random() * width);
+    const startY = Math.floor(Math.random() * height);
+    const length = Math.floor(Math.random() * (width / 3)) + (width / 6); // Entre 1/6 et 1/2 de la largeur
+    
+    // Direction de la chaîne (angle en radians)
+    const angle = Math.random() * Math.PI * 2;
+    const dx = Math.cos(angle);
+    const dy = Math.sin(angle);
+    
+    // Créer la chaîne de montagnes
+    for (let j = 0; j < length; j++) {
+      const x = Math.floor(startX + dx * j) % width;
+      const y = Math.floor(startY + dy * j) % height;
+      
+      if (x >= 0 && x < width && y >= 0 && y < height) {
+        // Altitude décroissante en s'éloignant du centre de la chaîne
+        const distFromCenter = Math.abs(j - length / 2) / (length / 2);
+        const altitude = 80 + Math.random() * 20 - distFromCenter * 30;
+        
+        seedPoints.push({ x, y, altitude });
+      }
+    }
+  }
+  
+  // Créer des bassins/océans
+  const numOceans = Math.floor(width / 40); // Un océan tous les 40 tuiles
+  
+  for (let i = 0; i < numOceans; i++) {
+    const centerX = Math.floor(Math.random() * width);
+    const centerY = Math.floor(Math.random() * height);
+    const radius = Math.floor(Math.random() * (width / 8)) + (width / 8); // Entre 1/8 et 1/4 de la largeur
+    
+    // Ajouter un bassin océanique
+    for (let y = centerY - radius; y <= centerY + radius; y++) {
+      for (let x = centerX - radius; x <= centerX + radius; x++) {
+        const safeX = ((x % width) + width) % width;
+        const safeY = ((y % height) + height) % height;
+        
+        // Distance au centre du cercle
+        const dist = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
+        
+        if (dist <= radius) {
+          // Plus profond au centre et moins profond aux bords
+          const depthFactor = 1 - (dist / radius);
+          const altitude = 20 - depthFactor * 20;
+          
+          seedPoints.push({ x: safeX, y: safeY, altitude });
+        }
+      }
+    }
+  }
+  
+  // Ajouter quelques points aléatoires supplémentaires
+  for (let i = 0; i < numSeedPoints; i++) {
+    const x = Math.floor(Math.random() * width);
+    const y = Math.floor(Math.random() * height);
+    const altitude = Math.random() * 100;
+    
+    seedPoints.push({ x, y, altitude });
+  }
+  
+  // Initialiser le terrain à partir des points de départ
+  for (const point of seedPoints) {
+    worldData[point.y][point.x].altitude = point.altitude;
+  }
+  
+  // Propager les valeurs aux tuiles adjacentes (plusieurs passes)
+  for (let pass = 0; pass < iterationsPasses; pass++) {
+    const tempWorldData = JSON.parse(JSON.stringify(worldData)) as MapZone[][];
+    
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        // Si c'est un point de départ, ne pas modifier
+        if (seedPoints.some(p => p.x === x && p.y === y)) continue;
+        
+        // Calculer la valeur moyenne des voisins
+        let totalAltitude = 0;
+        let count = 0;
+        
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const nx = ((x + dx) % width + width) % width;
+            const ny = ((y + dy) % height + height) % height;
+            
+            totalAltitude += worldData[ny][nx].altitude;
+            count++;
+          }
+        }
+        
+        const avgAltitude = totalAltitude / count;
+        
+        // Ajouter un peu de bruit pour éviter un terrain trop lisse
+        const noise = (Math.random() - 0.5) * 5;
+        
+        tempWorldData[y][x].altitude = avgAltitude + noise;
+        
+        // S'assurer que l'altitude reste dans les limites
+        tempWorldData[y][x].altitude = Math.max(0, Math.min(100, tempWorldData[y][x].altitude));
+      }
+    }
+    
+    // Copier les données temporaires dans worldData
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        worldData[y][x].altitude = tempWorldData[y][x].altitude;
+      }
+    }
   }
 }
 
-// Générer des biomes cohérents (lacs, forêts, déserts, etc.)
-function generateBiomes(map: MapTile[][], width: number, height: number): void {
-  // Paramètres pour les biomes
-  const biomes = [
-    { type: TileType.Water, probability: 0.03, minSize: 8, maxSize: 20, walkable: false, description: 'Un lac profond' },
-    { type: TileType.Forest, probability: 0.04, minSize: 10, maxSize: 25, walkable: true, description: 'Une forêt dense' },
-    { type: TileType.Sand, probability: 0.03, minSize: 8, maxSize: 15, walkable: true, description: 'Une zone sablonneuse' },
-    { type: TileType.Mountain, probability: 0.02, minSize: 5, maxSize: 12, walkable: false, description: 'Une montagne escarpée' },
-    { type: TileType.Swamp, probability: 0.02, minSize: 6, maxSize: 12, walkable: true, description: 'Un marécage boueux' },
-    { type: TileType.Ice, probability: 0.015, minSize: 5, maxSize: 10, walkable: true, description: 'Une surface glacée glissante' },
-    { type: TileType.Ruins, probability: 0.01, minSize: 3, maxSize: 8, walkable: true, description: 'Des ruines anciennes' },
-    { type: TileType.Cave, probability: 0.01, minSize: 2, maxSize: 5, walkable: true, description: 'L\'entrée d\'une grotte sombre' }
-  ];
-
-  // Générer chaque biome
-  for (let biome of biomes) {
-    generateBiome(map, width, height, biome);
-  }
-}
-
-// Générer un type spécifique de biome
-function generateBiome(
-  map: MapTile[][], 
-  width: number, 
-  height: number, 
-  biome: { type: TileType, probability: number, minSize: number, maxSize: number, walkable: boolean, description: string }
-): void {
-  // Nombre de points de départ pour ce biome
-  const numStartPoints = Math.floor((width * height) * biome.probability);
-  
-  for (let i = 0; i < numStartPoints; i++) {
-    // Choisir un point de départ aléatoire (éviter les bords)
-    const startX = Math.floor(Math.random() * (width - 4)) + 2;
-    const startY = Math.floor(Math.random() * (height - 4)) + 2;
+// Appliquer des règles climatiques réalistes basées sur la latitude
+function applyClimateRules(worldData: MapZone[][], width: number, height: number): void {
+  for (let y = 0; y < height; y++) {
+    // Facteur de latitude (équateur au milieu, pôles aux extrémités)
+    const latitudeFactor = 1 - Math.abs((y - height / 2) / (height / 2));
     
-    // Taille aléatoire pour ce biome
-    const size = Math.floor(Math.random() * (biome.maxSize - biome.minSize + 1)) + biome.minSize;
-    
-    // Croissance organique du biome à partir du point de départ
-    growBiome(map, startX, startY, biome.type, size, biome.walkable, biome.description);
-  }
-}
-
-// Faire croître un biome de manière organique à partir d'un point
-function growBiome(
-  map: MapTile[][], 
-  startX: number, 
-  startY: number, 
-  type: TileType, 
-  size: number,
-  walkable: boolean,
-  description: string
-): void {
-  const width = map[0].length;
-  const height = map.length;
-  
-  // Liste des tuiles à traiter (commençant par le point de départ)
-  const tilesToProcess = [{ x: startX, y: startY }];
-  // Tuiles déjà traitées
-  const processedTiles = new Set<string>();
-  
-  while (tilesToProcess.length > 0 && processedTiles.size < size) {
-    // Prendre une tuile aléatoire de la liste
-    const randomIndex = Math.floor(Math.random() * tilesToProcess.length);
-    const currentTile = tilesToProcess[randomIndex];
-    tilesToProcess.splice(randomIndex, 1);
-    
-    const tileKey = `${currentTile.x},${currentTile.y}`;
-    if (processedTiles.has(tileKey)) continue;
-    
-    // Marquer comme traitée
-    processedTiles.add(tileKey);
-    
-    // Modifier la tuile actuelle (sauf si c'est un mur de bordure)
-    if (currentTile.x > 1 && currentTile.y > 1 && currentTile.x < width - 2 && currentTile.y < height - 2) {
-      // Éviter de remplacer les murs
-      if (map[currentTile.y][currentTile.x].type !== TileType.Wall) {
-        map[currentTile.y][currentTile.x] = { type, walkable, description };
+    for (let x = 0; x < width; x++) {
+      const zone = worldData[y][x];
+      
+      // Température basée sur la latitude et l'altitude
+      // Plus chaud à l'équateur, plus froid aux pôles et en haute altitude
+      const baseTemp = latitudeFactor * 100; // 0-100 (équateur = 100, pôles = 0)
+      const altitudeFactor = zone.altitude / 100; // 0-1
+      
+      // Diminution de la température avec l'altitude (~6°C par 1000m)
+      // Converti ici à une échelle de 0-100
+      zone.temperature = baseTemp - (altitudeFactor * 40);
+      zone.temperature = Math.max(0, Math.min(100, zone.temperature));
+      
+      // Humidité influencée par la latitude et l'altitude
+      // Les zones équatoriales sont généralement plus humides
+      let baseHumidity = latitudeFactor * 60 + Math.random() * 40;
+      
+      // Les montagnes ont tendance à capturer l'humidité d'un côté et créer des zones arides de l'autre
+      // Simulons un vent dominant d'ouest en est
+      if (x > 0 && worldData[y][x-1].altitude < zone.altitude && zone.altitude > 60) {
+        baseHumidity += 20; // Côté au vent (ouest) est plus humide
+      } else if (x < width - 1 && worldData[y][x+1].altitude < zone.altitude && zone.altitude > 60) {
+        baseHumidity -= 20; // Côté sous le vent (est) est plus sec
       }
       
-      // Ajouter les tuiles voisines avec une probabilité décroissante selon la distance
-      const neighbors = [
-        { x: currentTile.x + 1, y: currentTile.y },
-        { x: currentTile.x - 1, y: currentTile.y },
-        { x: currentTile.x, y: currentTile.y + 1 },
-        { x: currentTile.x, y: currentTile.y - 1 }
-      ];
+      // Ajustement basé sur la distance des océans (simple)
+      let isNearWater = false;
+      const searchRadius = 10;
       
-      for (const neighbor of neighbors) {
-        if (
-          neighbor.x > 0 && neighbor.y > 0 && 
-          neighbor.x < width - 1 && neighbor.y < height - 1 &&
-          !processedTiles.has(`${neighbor.x},${neighbor.y}`) &&
-          Math.random() < 0.75  // 75% de chance de croître dans cette direction
-        ) {
-          tilesToProcess.push(neighbor);
+      for (let dy = -searchRadius; dy <= searchRadius && !isNearWater; dy++) {
+        for (let dx = -searchRadius; dx <= searchRadius && !isNearWater; dx++) {
+          const nx = ((x + dx) % width + width) % width;
+          const ny = ((y + dy) % height + height) % height;
+          
+          // Si c'est de l'eau (altitude < 30)
+          if (worldData[ny][nx].altitude < 30) {
+            const distance = Math.sqrt(dx*dx + dy*dy);
+            if (distance <= searchRadius) {
+              isNearWater = true;
+              baseHumidity += 20 * (1 - distance / searchRadius);
+            }
+          }
+        }
+      }
+      
+      zone.humidity = Math.max(0, Math.min(100, baseHumidity));
+    }
+  }
+}
+
+// Lisser les transitions entre les zones climatiques
+function smoothTransitions(worldData: MapZone[][], width: number, height: number): void {
+  const tempWorldData = JSON.parse(JSON.stringify(worldData)) as MapZone[][];
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let totalHumidity = 0;
+      let totalTemperature = 0;
+      let count = 0;
+      
+      // Calculer la moyenne des voisins
+      for (let dy = -2; dy <= 2; dy++) {
+        for (let dx = -2; dx <= 2; dx++) {
+          const nx = ((x + dx) % width + width) % width;
+          const ny = ((y + dy) % height + height) % height;
+          
+          totalHumidity += worldData[ny][nx].humidity;
+          totalTemperature += worldData[ny][nx].temperature;
+          count++;
+        }
+      }
+      
+      // Ajuster légèrement vers la moyenne
+      const avgHumidity = totalHumidity / count;
+      const avgTemperature = totalTemperature / count;
+      
+      tempWorldData[y][x].humidity = worldData[y][x].humidity * 0.7 + avgHumidity * 0.3;
+      tempWorldData[y][x].temperature = worldData[y][x].temperature * 0.7 + avgTemperature * 0.3;
+    }
+  }
+  
+  // Copier les données lissées
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      worldData[y][x].humidity = tempWorldData[y][x].humidity;
+      worldData[y][x].temperature = tempWorldData[y][x].temperature;
+    }
+  }
+}
+
+// Convertir les données climatiques en types de terrain
+function convertWorldDataToTerrain(worldData: MapZone[][]): MapTile[][] {
+  const height = worldData.length;
+  const width = worldData[0].length;
+  const map: MapTile[][] = [];
+  
+  for (let y = 0; y < height; y++) {
+    const row: MapTile[] = [];
+    for (let x = 0; x < width; x++) {
+      const zone = worldData[y][x];
+      const { altitude, humidity, temperature } = zone;
+      
+      // Détermine le type de terrain basé sur l'altitude, l'humidité et la température
+      let tileType: TileType;
+      let walkable = true;
+      let description = '';
+      
+      // Océans et mers (altitude basse)
+      if (altitude < 30) {
+        tileType = TileType.Water;
+        walkable = false;
+        
+        if (altitude < 15) {
+          description = 'Eaux profondes de l\'océan';
+        } else {
+          description = 'Eaux peu profondes près de la côte';
+        }
+      }
+      // Zones côtières et plages
+      else if (altitude < 35) {
+        tileType = TileType.Sand;
+        description = 'Une plage de sable au bord de l\'eau';
+      }
+      // Hautes montagnes (altitude très élevée)
+      else if (altitude > 85) {
+        // Sommets enneigés si température basse
+        if (temperature < 30) {
+          tileType = TileType.Ice;
+          description = 'Un sommet montagneux enneigé';
+        } else {
+          tileType = TileType.Mountain;
+          description = 'Un sommet rocailleux';
+        }
+        walkable = false;
+      }
+      // Montagnes (altitude élevée)
+      else if (altitude > 75) {
+        tileType = TileType.Mountain;
+        // Certaines pentes sont accessibles
+        walkable = Math.random() > 0.6;
+        description = 'Une zone montagneuse escarpée';
+      }
+      // Collines et terrain élevé
+      else if (altitude > 60) {
+        // Différents types selon climat
+        if (humidity < 30) {
+          if (temperature > 70) {
+            tileType = TileType.Sand; // Désert rocheux
+            description = 'Des collines arides et rocailleuses';
+          } else {
+            tileType = TileType.Ruins; // Terrain rocheux
+            description = 'Des collines de pierres et d\'éboulis';
+            walkable = true;
+          }
+        } else {
+          tileType = TileType.Forest; // Forêt de montagne
+          description = 'Une forêt d\'altitude';
+        }
+      }
+      // Plaines et terrains moyens
+      else {
+        // Combinaison température/humidité
+        if (humidity < 30) {
+          // Zones arides
+          if (temperature > 70) {
+            tileType = TileType.Sand; // Désert chaud
+            description = 'Un désert de sable chaud';
+          } else if (temperature > 30) {
+            tileType = TileType.Grass; // Savane/steppe
+            description = 'Une plaine d\'herbes sèches';
+          } else {
+            tileType = TileType.Grass; // Toundra
+            description = 'Une toundra froide';
+          }
+        } 
+        else if (humidity < 60) {
+          // Zones moyennement humides
+          if (temperature > 60) {
+            tileType = TileType.Grass; // Savane
+            description = 'Une savane avec des herbes hautes';
+          } else if (temperature > 30) {
+            tileType = TileType.Grass; // Prairie
+            description = 'Une prairie verdoyante';
+          } else {
+            tileType = TileType.Grass; // Prairie froide
+            description = 'Une prairie froide';
+          }
+        } 
+        else {
+          // Zones humides
+          if (temperature > 70) {
+            tileType = TileType.Forest; // Forêt tropicale
+            description = 'Une forêt tropicale dense';
+          } else if (temperature > 40) {
+            if (humidity > 80) {
+              tileType = TileType.Swamp; // Marécage
+              description = 'Un marécage boueux';
+            } else {
+              tileType = TileType.Forest; // Forêt tempérée
+              description = 'Une forêt tempérée';
+            }
+          } else {
+            tileType = TileType.Forest; // Forêt boréale/taïga
+            description = 'Une forêt de conifères';
+          }
+        }
+      }
+      
+      row.push({ 
+        type: tileType, 
+        walkable, 
+        description
+      });
+    }
+    map.push(row);
+  }
+  
+  return map;
+}
+
+// Ajouter des chemins naturels, routes et rivières
+function addPathsAndRivers(map: MapTile[][], width: number, height: number, worldData: MapZone[][]): void {
+  // Ajouter des rivières qui coulent des montagnes vers la mer
+  addRivers(map, width, height, worldData);
+  
+  // Ajouter des chemins/routes entre les zones d'intérêt
+  addPaths(map, width, height);
+}
+
+// Ajouter des rivières depuis les zones montagneuses vers les océans
+function addRivers(map: MapTile[][], width: number, height: number, worldData: MapZone[][]): void {
+  const numRivers = Math.floor(Math.max(width, height) / 8); // Un nombre raisonnable de rivières
+  
+  for (let i = 0; i < numRivers; i++) {
+    // Chercher un point de départ élevé (source en montagne)
+    let startX = -1;
+    let startY = -1;
+    let maxTries = 100;
+    
+    while (maxTries > 0 && (startX === -1 || worldData[startY][startX].altitude < 70)) {
+      startX = Math.floor(Math.random() * width);
+      startY = Math.floor(Math.random() * height);
+      maxTries--;
+    }
+    
+    if (startX !== -1) {
+      // Tracer la rivière en suivant la pente
+      let currentX = startX;
+      let currentY = startY;
+      let maxSteps = width + height; // Éviter les boucles infinies
+      
+      while (maxSteps > 0) {
+        // Marquer cette tuile comme rivière si elle n'est pas déjà de l'eau
+        if (map[currentY][currentX].type !== TileType.Water) {
+          map[currentY][currentX] = {
+            type: TileType.Water,
+            walkable: false,
+            description: 'Une rivière qui coule vers l\'océan'
+          };
+        }
+        
+        // Trouver le voisin avec l'altitude la plus basse
+        let minAltitude = worldData[currentY][currentX].altitude;
+        let nextX = -1;
+        let nextY = -1;
+        
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            
+            const nx = (currentX + dx + width) % width;
+            const ny = (currentY + dy + height) % height;
+            
+            if (worldData[ny][nx].altitude < minAltitude) {
+              minAltitude = worldData[ny][nx].altitude;
+              nextX = nx;
+              nextY = ny;
+            }
+          }
+        }
+        
+        // Si on ne trouve pas de voisin plus bas, terminer
+        if (nextX === -1 || nextY === -1) break;
+        
+        // Si on atteint l'océan, terminer
+        if (map[nextY][nextX].type === TileType.Water && worldData[nextY][nextX].altitude < 30) break;
+        
+        currentX = nextX;
+        currentY = nextY;
+        maxSteps--;
+      }
+    }
+  }
+}
+
+// Ajouter des chemins qui relient des points d'intérêt
+function addPaths(map: MapTile[][], width: number, height: number): void {
+  // Nombres de chemins à ajouter
+  const numPaths = Math.floor(Math.max(width, height) / 10);
+  
+  for (let i = 0; i < numPaths; i++) {
+    // Choisir deux points aléatoires sur la carte (assez espacés)
+    let startX, startY, endX, endY;
+    let validPoints = false;
+    let attempts = 0;
+    
+    while (!validPoints && attempts < 50) {
+      startX = Math.floor(Math.random() * width);
+      startY = Math.floor(Math.random() * height);
+      
+      // Point d'arrivée dans une direction aléatoire, mais à bonne distance
+      const angle = Math.random() * Math.PI * 2;
+      const distance = Math.floor(Math.random() * (width / 3)) + (width / 6);
+      
+      endX = Math.floor(startX + Math.cos(angle) * distance);
+      endY = Math.floor(startY + Math.sin(angle) * distance);
+      
+      // S'assurer que les points sont dans les limites
+      endX = Math.max(0, Math.min(width - 1, endX));
+      endY = Math.max(0, Math.min(height - 1, endY));
+      
+      // Vérifier que les deux points sont sur terre
+      if (map[startY][startX].walkable && map[endY][endX].walkable) {
+        validPoints = true;
+      }
+      
+      attempts++;
+    }
+    
+    if (validPoints) {
+      // Tracer un chemin entre ces deux points (algorithme A* simplifié)
+      const path = findPath(map, startX, startY, endX, endY, width, height);
+      
+      // Créer le chemin
+      for (const {x, y} of path) {
+        // Ne pas placer de chemins sur l'eau
+        if (map[y][x].type !== TileType.Water) {
+          map[y][x] = {
+            type: TileType.Path,
+            walkable: true,
+            description: 'Un chemin bien tracé'
+          };
         }
       }
     }
   }
 }
 
-// Générer des chemins naturels sur la carte
-function generatePaths(map: MapTile[][], width: number, height: number): void {
-  // Chemin principal horizontal
-  const midY = Math.floor(height / 2);
-  
-  // Point de départ et d'arrivée
-  const startX = 1;
-  const endX = width - 2;
-  
-  // Générer un chemin sinueux
-  generateSinuousPath(map, { x: startX, y: midY }, { x: endX, y: midY });
-  
-  // Chemin secondaire vertical
-  const midX = Math.floor(width / 2);
-  generateSinuousPath(map, { x: midX, y: 1 }, { x: midX, y: height - 2 });
-  
-  // Quelques chemins aléatoires supplémentaires
-  for (let i = 0; i < 3; i++) {
-    const startPoint = {
-      x: Math.floor(Math.random() * (width - 4)) + 2,
-      y: Math.floor(Math.random() * (height - 4)) + 2
-    };
-    
-    const endPoint = {
-      x: Math.floor(Math.random() * (width - 4)) + 2,
-      y: Math.floor(Math.random() * (height - 4)) + 2
-    };
-    
-    generateSinuousPath(map, startPoint, endPoint);
-  }
-}
-
-// Générer un chemin sinueux entre deux points
-function generateSinuousPath(
+// Trouver un chemin entre deux points (algorithme A* simplifié)
+function findPath(
   map: MapTile[][], 
-  start: { x: number, y: number }, 
-  end: { x: number, y: number }
-): void {
-  const width = map[0].length;
-  const height = map.length;
+  startX: number, 
+  startY: number, 
+  endX: number, 
+  endY: number,
+  width: number,
+  height: number
+): Array<{x: number, y: number}> {
+  // Simplification : tracé d'une ligne sinueuse au lieu d'un A* complet
+  const path: Array<{x: number, y: number}> = [];
+  let currentX = startX;
+  let currentY = startY;
   
-  let currentX = start.x;
-  let currentY = start.y;
+  // Nombre de points intermédiaires pour la sinuosité
+  const numIntermediatePoints = Math.floor(
+    Math.sqrt((endX - startX) ** 2 + (endY - startY) ** 2) / 5
+  );
   
-  while (currentX !== end.x || currentY !== end.y) {
-    // Marquer la tuile actuelle comme un chemin (si ce n'est pas un mur)
-    if (map[currentY][currentX].type !== TileType.Wall) {
-      map[currentY][currentX] = { 
-        type: TileType.Path, 
-        walkable: true,
-        description: 'Un sentier bien tracé' 
-      };
-    }
+  // Ajouter le point de départ
+  path.push({ x: currentX, y: currentY });
+  
+  // Créer des points intermédiaires aléatoires
+  for (let i = 0; i < numIntermediatePoints; i++) {
+    // Progresser vers la destination avec un peu d'aléatoire
+    const progressRatio = (i + 1) / (numIntermediatePoints + 1);
+    const targetX = startX + (endX - startX) * progressRatio;
+    const targetY = startY + (endY - startY) * progressRatio;
     
-    // Déterminer la direction à prendre
-    const horizontalDiff = end.x - currentX;
-    const verticalDiff = end.y - currentY;
+    // Ajouter de l'aléatoire
+    const randomDeviation = Math.min(width, height) / 15;
+    currentX = Math.floor(targetX + (Math.random() - 0.5) * randomDeviation);
+    currentY = Math.floor(targetY + (Math.random() - 0.5) * randomDeviation);
     
-    // Probabilité de mouvement selon les différences
-    const horizontalProb = Math.abs(horizontalDiff) / (Math.abs(horizontalDiff) + Math.abs(verticalDiff));
+    // S'assurer que les points sont dans les limites
+    currentX = Math.max(0, Math.min(width - 1, currentX));
+    currentY = Math.max(0, Math.min(height - 1, currentY));
     
-    // Ajouter un facteur aléatoire pour rendre le chemin sinueux
-    const randomFactor = Math.random() * 0.3; // 30% d'aléatoire
-    
-    // Décider si on bouge horizontalement ou verticalement
-    if (Math.random() < horizontalProb + randomFactor) {
-      // Mouvement horizontal
-      currentX += horizontalDiff > 0 ? 1 : -1;
-    } else {
-      // Mouvement vertical
-      currentY += verticalDiff > 0 ? 1 : -1;
-    }
-    
-    // S'assurer qu'on reste dans les limites
-    currentX = Math.max(1, Math.min(width - 2, currentX));
-    currentY = Math.max(1, Math.min(height - 2, currentY));
+    path.push({ x: currentX, y: currentY });
   }
   
-  // Marquer le point final
-  if (map[end.y][end.x].type !== TileType.Wall) {
-    map[end.y][end.x] = { 
-      type: TileType.Path, 
-      walkable: true,
-      description: 'Un sentier bien tracé' 
-    };
+  // Ajouter le point final
+  path.push({ x: endX, y: endY });
+  
+  // Générer les points intermédiaires entre chaque segment
+  const finalPath: Array<{x: number, y: number}> = [];
+  
+  for (let i = 0; i < path.length - 1; i++) {
+    const p1 = path[i];
+    const p2 = path[i + 1];
+    
+    // Ajouter le premier point
+    finalPath.push(p1);
+    
+    // Tracer une ligne entre p1 et p2
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const steps = Math.max(Math.abs(dx), Math.abs(dy));
+    
+    for (let step = 1; step < steps; step++) {
+      const x = Math.round(p1.x + dx * (step / steps));
+      const y = Math.round(p1.y + dy * (step / steps));
+      
+      finalPath.push({ x, y });
+    }
   }
+  
+  // Ajouter le dernier point s'il n'est pas déjà inclus
+  finalPath.push(path[path.length - 1]);
+  
+  return finalPath;
 }
 
-// Ajouter des obstacles aléatoires
-function addRandomObstacles(map: MapTile[][], width: number, height: number): void {
-  const numObstacles = Math.floor((width * height) * 0.01); // 1% de la carte
+// Ajouter des entités et des points d'intérêt
+function addEntitiesAndPOIs(map: MapTile[][], width: number, height: number, worldData: MapZone[][]): void {
+  // Ajouter des villages/villes aux carrefours ou près des ressources
+  addSettlements(map, width, height, worldData);
   
-  for (let i = 0; i < numObstacles; i++) {
-    const x = Math.floor(Math.random() * (width - 4)) + 2;
-    const y = Math.floor(Math.random() * (height - 4)) + 2;
+  // Ajouter des ruines et structures anciennes
+  addRuins(map, width, height, worldData);
+  
+  // Ajouter des PNJ, trésors et autres entités
+  addEntities(map, width, height);
+}
+
+// Ajouter des villages et campements
+function addSettlements(map: MapTile[][], width: number, height: number, worldData: MapZone[][]): void {
+  const numSettlements = Math.floor(Math.max(width, height) / 15);
+  const settlements: Array<{x: number, y: number}> = [];
+  
+  // Trouver les emplacements appropriés pour les établissements
+  for (let i = 0; i < numSettlements; i++) {
+    // Chercher un emplacement favorable (près de l'eau, sur terrain plat)
+    let bestX = -1;
+    let bestY = -1;
+    let bestScore = -1;
     
-    // Ajouter un rocher ou un autre petit obstacle
-    if (map[y][x].type === TileType.Grass || map[y][x].type === TileType.Sand) {
-      // Plusieurs types d'obstacles possibles
-      const rand = Math.random();
+    // Essayer plusieurs positions
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const x = Math.floor(Math.random() * width);
+      const y = Math.floor(Math.random() * height);
       
-      if (rand < 0.3) {
-        map[y][x] = { 
-          type: TileType.Mountain, 
-          walkable: false,
-          description: 'Un rocher imposant' 
-        };
-      } else if (rand < 0.6) {
-        map[y][x] = { 
-          type: TileType.Wall, 
-          walkable: false,
-          description: 'Un mur de pierre' 
-        };
-      } else if (rand < 0.8) {
-        // Ajouter une zone de danger avec attributs
-        map[y][x] = { 
-          type: TileType.Lava, 
-          walkable: true,
-          description: 'Une flaque de lave bouillonnante',
-          attributes: {
-            danger: 2, // Niveau de danger (0-10)
+      if (!map[y][x].walkable) continue;
+      
+      // Calculer un score pour cet emplacement
+      let score = 0;
+      
+      // Préférence pour les terrains plats
+      if (map[y][x].type === TileType.Grass || map[y][x].type === TileType.Path) {
+        score += 10;
+      }
+      
+      // Vérifier la proximité d'eau
+      let hasWaterNearby = false;
+      let pathCount = 0;
+      
+      for (let dy = -3; dy <= 3; dy++) {
+        for (let dx = -3; dx <= 3; dx++) {
+          const nx = (x + dx + width) % width;
+          const ny = (y + dy + height) % height;
+          
+          if (map[ny][nx].type === TileType.Water) {
+            hasWaterNearby = true;
+            // Plus proche est l'eau, mieux c'est
+            const distance = Math.sqrt(dx*dx + dy*dy);
+            score += 5 * (1 - distance / 3);
           }
-        };
-      } else {
-        // Ajouter une zone avec un trésor caché
-        map[y][x] = { 
-          type: map[y][x].type, // Garder le même type
-          walkable: true,
-          description: 'Il semble y avoir quelque chose d\'intéressant ici...',
-          attributes: {
-            treasure: Math.floor(Math.random() * 5) + 1, // Valeur du trésor (1-5)
-            hidden: true
+          
+          if (map[ny][nx].type === TileType.Path) {
+            pathCount++;
           }
-        };
-      }
-    }
-  }
-}
-
-// Ajouter des entités sur la carte (NPC, trésors, portails, etc.)
-function addEntities(map: MapTile[][], width: number, height: number): void {
-  // Ajouter quelques PNJ
-  addEntityType(map, width, height, {
-    type: EntityType.NPC,
-    count: 5,
-    nameOptions: ['Villageois', 'Marchand', 'Voyageur', 'Sage', 'Étranger'],
-    interactions: [
-      'Bienvenue dans Beast Ride Saga!',
-      'Méfiez-vous des marécages au sud.',
-      'On raconte qu\'il y a des trésors cachés dans les ruines.',
-      'Avez-vous vu les étranges portails qui sont apparus?',
-      'Le passage vers les montagnes du nord est dangereux.'
-    ]
-  });
-  
-  // Ajouter des trésors
-  addEntityType(map, width, height, {
-    type: EntityType.Treasure,
-    count: 8,
-    nameOptions: ['Coffre', 'Butin', 'Artefact ancien', 'Relique', 'Gemmes'],
-    valueRange: [1, 5]
-  });
-  
-  // Ajouter des portails
-  addEntityType(map, width, height, {
-    type: EntityType.Portal,
-    count: 3,
-    nameOptions: ['Portail mystérieux', 'Porte dimensionnelle', 'Vortex'],
-    interactions: ['Ce portail semble mener vers un autre endroit...']
-  });
-  
-  // Ajouter des objets
-  addEntityType(map, width, height, {
-    type: EntityType.Item,
-    count: 10,
-    nameOptions: ['Potion', 'Épée', 'Bouclier', 'Parchemin', 'Amulette'],
-    interactions: ['Un objet qui pourrait être utile.']
-  });
-}
-
-// Fonction utilitaire pour ajouter un type d'entité spécifique
-function addEntityType(
-  map: MapTile[][], 
-  width: number, 
-  height: number, 
-  options: {
-    type: EntityType,
-    count: number,
-    nameOptions: string[],
-    interactions?: string[],
-    valueRange?: [number, number]
-  }
-): void {
-  const { type, count, nameOptions, interactions, valueRange } = options;
-  
-  let placedCount = 0;
-  let attempts = 0;
-  const maxAttempts = count * 10; // Éviter les boucles infinies
-  
-  while (placedCount < count && attempts < maxAttempts) {
-    attempts++;
-    
-    // Choisir une position aléatoire (éviter les bords)
-    const x = Math.floor(Math.random() * (width - 4)) + 2;
-    const y = Math.floor(Math.random() * (height - 4)) + 2;
-    
-    // Vérifier si la position est adaptée
-    if (
-      map[y][x].walkable && 
-      map[y][x].type !== TileType.Water && 
-      !map[y][x].entity // Pas d'entité existante
-    ) {
-      // Choisir un nom aléatoire
-      const name = nameOptions[Math.floor(Math.random() * nameOptions.length)];
-      
-      // Choisir une interaction si disponible
-      let interaction = undefined;
-      if (interactions && interactions.length > 0) {
-        interaction = interactions[Math.floor(Math.random() * interactions.length)];
+        }
       }
       
-      // Créer l'entité
-      const entity: any = {
-        type,
-        name,
-        id: `${type}-${placedCount}`
-      };
-      
-      if (interaction) {
-        entity.interaction = interaction;
+      // Bonus pour la proximité d'eau
+      if (hasWaterNearby) {
+        score += 5;
       }
       
-      // Ajouter des attributs spécifiques au type
-      if (type === EntityType.Treasure && valueRange) {
-        map[y][x].attributes = {
-          ...map[y][x].attributes,
-          treasure: Math.floor(Math.random() * (valueRange[1] - valueRange[0] + 1)) + valueRange[0]
-        };
-      }
-      
-      // Ajouter l'entité à la tuile
-      map[y][x].entity = entity;
-      
-      placedCount++;
-    }
-  }
-}
+      //

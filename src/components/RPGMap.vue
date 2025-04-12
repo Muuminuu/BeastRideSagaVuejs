@@ -12,15 +12,28 @@
           :class="[
             `tile-${tile.type}`,
             { 'player-position': isPlayerPosition(x + viewportStart.x, y + viewportStart.y) },
-            { 'tile-fog': !isTileVisible(x + viewportStart.x, y + viewportStart.y) }
+            { 'tile-fog': !isTileVisible(x + viewportStart.x, y + viewportStart.y) },
+            { 'tile-discovered': !isTileVisible(x + viewportStart.x, y + viewportStart.y) && isTileDiscovered(x + viewportStart.x, y + viewportStart.y) }
           ]"
           @click="handleTileClick(x + viewportStart.x, y + viewportStart.y)"
-          :title="tile.description"
+          :title="isTileVisible(x + viewportStart.x, y + viewportStart.y) || isTileDiscovered(x + viewportStart.x, y + viewportStart.y) ? tile.description : 'Zone inexplorée'"
         >
           <div v-if="isPlayerPosition(x + viewportStart.x, y + viewportStart.y)" class="player-sprite"></div>
           <div v-else-if="tile.entity && isTileVisible(x + viewportStart.x, y + viewportStart.y)" 
                class="entity-sprite" 
-               :class="`entity-${tile.entity.type}`"></div>
+               :class="`entity-${tile.entity.type}`"
+               :title="tile.entity.name || tile.entity.type"></div>
+        </div>
+      </div>
+      <div class="map-controls">
+        <div class="zoom-controls">
+          <button @click="zoomIn" class="zoom-button">+</button>
+          <button @click="zoomOut" class="zoom-button">-</button>
+        </div>
+        <div class="mini-map" v-if="showMiniMap">
+          <div class="mini-map-content">
+            <!-- Implémentation d'une mini-carte ici -->
+          </div>
         </div>
       </div>
     </div>
@@ -30,6 +43,7 @@
   import { defineComponent, computed, ref, watch } from 'vue';
   import type { PropType } from 'vue';
   import type { MapTile, Position, Direction } from '@/types';
+  import { useGameStore } from '@/stores/game';
     
   export default defineComponent({
     name: 'RPGMap',
@@ -49,13 +63,20 @@
     },
     emits: ['move'],
     setup(props, { emit }) {
-      // Taille de la fenêtre visible autour du joueur
-      const viewportSize = { width: 15, height: 10 };
+      const gameStore = useGameStore();
+      const tileSize = ref(32); // Taille de base des tuiles
+      const showMiniMap = ref(false); // Option pour afficher une mini-carte
       
-      // Position de départ de la fenêtre visible
+      // Taille de la fenêtre visible autour du joueur
+      const viewportSize = computed(() => ({
+        width: Math.min(15, Math.floor(window.innerWidth / tileSize.value)),
+        height: Math.min(10, Math.floor(window.innerHeight / tileSize.value * 0.7))
+      }));
+      
+      // Position de départ de la fenêtre visible (centrée sur le joueur)
       const viewportStart = ref({ 
-        x: Math.max(0, props.playerPosition.x - Math.floor(viewportSize.width / 2)),
-        y: Math.max(0, props.playerPosition.y - Math.floor(viewportSize.height / 2))
+        x: Math.max(0, props.playerPosition.x - Math.floor(viewportSize.value.width / 2)),
+        y: Math.max(0, props.playerPosition.y - Math.floor(viewportSize.value.height / 2))
       });
       
       // Calculer la portion visible de la carte
@@ -65,12 +86,12 @@
         const mapHeight = props.mapData.length;
         const mapWidth = props.mapData[0]?.length || 0;
         
-        for (let y = 0; y < viewportSize.height; y++) {
+        for (let y = 0; y < viewportSize.value.height; y++) {
           const mapY = y + viewportStart.value.y;
           if (mapY >= mapHeight) break;
           
           const row: MapTile[] = [];
-          for (let x = 0; x < viewportSize.width; x++) {
+          for (let x = 0; x < viewportSize.value.width; x++) {
             const mapX = x + viewportStart.value.x;
             if (mapX >= mapWidth) break;
             
@@ -82,23 +103,24 @@
         return result;
       });
       
-      // Vérifier si une tuile est visible selon le brouillard de guerre
+      // Fonctions d'aide pour vérifier si une tuile est visible ou découverte
       const isTileVisible = (x: number, y: number): boolean => {
-        if (x < 0 || y < 0 || x >= props.visibleMap[0]?.length || y >= props.visibleMap.length) {
-          return false;
-        }
-        return props.visibleMap[y][x];
+        return gameStore.isTileVisible(x, y);
+      };
+      
+      const isTileDiscovered = (x: number, y: number): boolean => {
+        return gameStore.isTileDiscovered(x, y);
       };
       
       // Mettre à jour la position de la fenêtre visible quand le joueur se déplace
       watch(() => props.playerPosition, (newPos) => {
         // Calculer la nouvelle position de la fenêtre en gardant le joueur au centre
-        const newX = Math.max(0, newPos.x - Math.floor(viewportSize.width / 2));
-        const newY = Math.max(0, newPos.y - Math.floor(viewportSize.height / 2));
+        const newX = Math.max(0, newPos.x - Math.floor(viewportSize.value.width / 2));
+        const newY = Math.max(0, newPos.y - Math.floor(viewportSize.value.height / 2));
         
         // Limiter la position de la fenêtre pour ne pas dépasser les limites de la carte
-        const maxX = Math.max(0, props.mapData[0]?.length - viewportSize.width);
-        const maxY = Math.max(0, props.mapData.length - viewportSize.height);
+        const maxX = Math.max(0, props.mapData[0]?.length - viewportSize.value.width);
+        const maxY = Math.max(0, props.mapData.length - viewportSize.value.height);
         
         viewportStart.value = {
           x: Math.min(newX, maxX),
@@ -106,13 +128,15 @@
         };
       }, { immediate: true });
       
+      // Vérifier si une position correspond à celle du joueur
       const isPlayerPosition = (x: number, y: number): boolean => {
         return props.playerPosition.x === x && props.playerPosition.y === y;
       };
   
+      // Gestion des clics sur les tuiles
       const handleTileClick = (x: number, y: number) => {
-        // Ne pas permettre de cliquer sur les tuiles non visibles
-        if (!isTileVisible(x, y)) return;
+        // Ne pas permettre de cliquer sur les tuiles non visibles et non découvertes
+        if (!isTileVisible(x, y) && !isTileDiscovered(x, y)) return;
         
         // Calculer la direction du déplacement basée sur la position actuelle
         const dx = x - props.playerPosition.x;
@@ -130,13 +154,70 @@
           emit('move', direction);
         }
       };
+      
+      // Fonctions de zoom
+      const zoomIn = () => {
+        if (tileSize.value < 48) {
+          tileSize.value += 4;
+          // Recalculer la taille du viewport
+          updateViewport();
+        }
+      };
+      
+      const zoomOut = () => {
+        if (tileSize.value > 16) {
+          tileSize.value -= 4;
+          // Recalculer la taille du viewport
+          updateViewport();
+        }
+      };
+      
+      // Mettre à jour le viewport après un changement de zoom
+      const updateViewport = () => {
+        const newViewportSize = {
+          width: Math.min(15, Math.floor(window.innerWidth / tileSize.value)),
+          height: Math.min(10, Math.floor(window.innerHeight / tileSize.value * 0.7))
+        };
+        
+        // Ajuster la position du viewport pour garder le joueur centré
+        const newX = Math.max(0, props.playerPosition.x - Math.floor(newViewportSize.width / 2));
+        const newY = Math.max(0, props.playerPosition.y - Math.floor(newViewportSize.height / 2));
+        
+        // Limiter la position
+        const maxX = Math.max(0, props.mapData[0]?.length - newViewportSize.width);
+        const maxY = Math.max(0, props.mapData.length - newViewportSize.height);
+        
+        viewportStart.value = {
+          x: Math.min(newX, maxX),
+          y: Math.min(newY, maxY)
+        };
+      };
+      
+      // Gérer le redimensionnement de la fenêtre
+      const handleResize = () => {
+        updateViewport();
+      };
+      
+      // Ajouter/retirer les écouteurs d'événements
+      window.addEventListener('resize', handleResize);
+      
+      // Nettoyer les écouteurs d'événements à la destruction du composant
+      onUnmounted(() => {
+        window.removeEventListener('resize', handleResize);
+      });
     
       return {
+        tileSize,
         isPlayerPosition,
         isTileVisible,
+        isTileDiscovered,
         handleTileClick,
         visibleMapData,
-        viewportStart
+        viewportStart,
+        viewportSize,
+        zoomIn,
+        zoomOut,
+        showMiniMap
       };
     }
   });
@@ -149,6 +230,7 @@
     background-color: #222;
     padding: 2px;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+    position: relative;
   }
     
   .map-row {
@@ -156,8 +238,8 @@
   }
     
   .map-tile {
-    width: 32px;
-    height: 32px;
+    width: v-bind('`${tileSize}px`');
+    height: v-bind('`${tileSize}px`');
     display: flex;
     align-items: center;
     justify-content: center;
@@ -268,14 +350,29 @@
     background-color: rgba(0, 0, 0, 0.7);
     z-index: 10;
   }
+  
+  .tile-discovered {
+    position: relative;
+  }
+  
+  .tile-discovered::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4);
+    z-index: 5;
+  }
     
   .player-position {
     box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.8);
   }
     
   .player-sprite {
-    width: 20px;
-    height: 20px;
+    width: calc(v-bind('tileSize') * 0.6);
+    height: calc(v-bind('tileSize') * 0.6);
     background-color: #ff5a5a;
     border-radius: 50%;
     border: 2px solid #ffffff;
@@ -285,8 +382,8 @@
   }
   
   .entity-sprite {
-    width: 16px;
-    height: 16px;
+    width: calc(v-bind('tileSize') * 0.5);
+    height: calc(v-bind('tileSize') * 0.5);
     border-radius: 3px;
     z-index: 15;
   }
@@ -320,6 +417,53 @@
     border: 2px solid #7700cc;
     animation: portal-rotate 3s infinite linear;
     border-radius: 50%;
+  }
+  
+  .map-controls {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .zoom-controls {
+    display: flex;
+    gap: 5px;
+  }
+  
+  .zoom-button {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.6);
+    color: white;
+    border: 1px solid white;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  
+  .zoom-button:hover {
+    background-color: rgba(50, 50, 50, 0.8);
+  }
+  
+  .mini-map {
+    width: 100px;
+    height: 100px;
+    background-color: rgba(0, 0, 0, 0.6);
+    border: 1px solid white;
+    border-radius: 5px;
+    padding: 5px;
+  }
+  
+  .mini-map-content {
+    width: 100%;
+    height: 100%;
+    position: relative;
   }
     
   @keyframes pulse {
@@ -362,5 +506,27 @@
     0% { background-position: 0 0; }
     100% { background-position: 5px 5px; }
   }
-
-    </style>
+  
+  /* Styles responsifs */
+  @media (max-width: 768px) {
+    .map-tile {
+      /* Taille réduite sur mobile */
+      width: 24px;
+      height: 24px;
+    }
+    
+    .player-sprite {
+      width: 14px;
+      height: 14px;
+    }
+    
+    .entity-sprite {
+      width: 12px;
+      height: 12px;
+    }
+    
+    .zoom-controls {
+      display: none; /* Masquer les contrôles de zoom sur mobile */
+    }
+  }
+  </style>
