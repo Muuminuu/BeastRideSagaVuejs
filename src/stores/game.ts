@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import type { Hero } from '@/core/entities/Hero';
+import { Hero } from '@/core/entities/Hero';
 import type { Enemy } from '@/core/entities/Enemy';
 import { AnimalSpirit } from '@/core/entities/AnimalSpirit';
 
@@ -28,7 +28,7 @@ export enum GameTime {
 export enum Season {
     Spring = 'spring',
     Summer = 'summer',
-    Autumn = 'autumn',
+    Fall = 'fall',
     Winter = 'winter',
 }
 

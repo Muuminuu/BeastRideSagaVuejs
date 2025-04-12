@@ -69,7 +69,7 @@ import type { CombatState, PlayerAction } from '@/core/systems/CombatSystem';
 import { Hero } from '@/core/entities/Hero';
 import { Enemy } from '@/core/entities/Enemy';
 import type { Ability } from '@/core/types/Ability';
-import { useGameStore, GameTime, Season } from '@/stores/game';
+import { useGameStore, GameTime, Season } from '@/stores/game.ts';
 
 export default defineComponent({
   name: 'CombatView',
@@ -98,7 +98,7 @@ export default defineComponent({
       switch(gameStore.currentSeason) {
         case Season.Spring: return 'Printemps';
         case Season.Summer: return 'Été';
-        case Season.Autumn: return 'Automne';
+        case Season.Fall : return 'Automne';
         case Season.Winter: return 'Hiver';
         default: return 'Saison inconnue';
       }

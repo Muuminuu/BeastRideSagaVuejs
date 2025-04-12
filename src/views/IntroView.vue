@@ -75,11 +75,11 @@
   
   <script lang="ts">
   import { defineComponent, ref } from 'vue';
-  import { useRouter } from 'vue-router';
-  import { Hero } from '@/core/entities/Hero';
-  import { AnimalSpirit } from '@/core/entities/AnimalSpirit';
-  import { AnimalType } from '@/core/types/Enums';
-  import { useGameStore } from '@/stores/game';
+    import { useRouter } from 'vue-router';
+    import { Hero } from '@/core/entities/Hero';
+    import { AnimalSpirit } from '@/core/entities/AnimalSpirit';
+    import { AnimalType, DamageType, TargetType } from '@/core/types/Enums';
+    import  { useGameStore } from '@/stores/game.ts';
   
   export default defineComponent({
     name: 'IntroView',
@@ -204,10 +204,12 @@
   
           // Ajouter les capacités à l'esprit animal
           animalSpirit.abilities = selectedSpirit.abilities.map(ability => ({
-            ...ability,
-            damageType: AnimalType.Reptile ? 'dark' : AnimalType.Bird ? 'air' : 'physical',
-            targetType: 'singleEnemy'
-          }));
+        ...ability,
+        damageType: selectedSpirit.type === AnimalType.Reptile ? DamageType.Dark : 
+                    selectedSpirit.type === AnimalType.Bird ? DamageType.Air : 
+                    DamageType.Physical,
+        targetType: TargetType.SingleEnemy
+        }));
   
           // Lier l'esprit au héros
           hero.bondWithSpirit(animalSpirit);

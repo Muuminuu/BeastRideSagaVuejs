@@ -130,7 +130,8 @@
   </template>
   
   <script lang="ts">
-  import { defineComponent, ref, computed, watchEffect, PropType, onMounted } from 'vue';
+  import { defineComponent, ref, computed, watchEffect, onMounted } from 'vue';
+  import type { PropType } from 'vue';
   import type { WorldRegion } from '@/stores/game';
   
   // Types for enhanced map data
