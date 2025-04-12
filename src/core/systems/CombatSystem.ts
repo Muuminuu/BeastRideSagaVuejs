@@ -2,7 +2,7 @@ import { Hero } from '../entities/Hero';
 import { Enemy } from '../entities/Enemy';
 import type { Ability } from '../types/Ability';
 import type { Combatant } from '../types/Interfaces';
-import { ActionType } from '../types/Enums';
+import { ActionType, DamageType } from '../types/Enums';
 
 export interface CombatState {
   player: Hero;
@@ -71,12 +71,12 @@ export class CombatSystem {
           if (!target) throw new Error("Cible invalide");
           
           const damage = Math.floor(currentEntity.stats.attack * 0.8);
-          target.takeDamage(damage, 'physical' as DamageType);
+          target.takeDamage(damage, DamageType.Physical);
           
-          newState.messages.push(`${currentEntity.name} attaque ${target.name} pour ${damage} dégâts!`);
+          newState.messages.push(`${currentEntity.name || 'Joueur'} attaque ${target.name || 'Ennemi'} pour ${damage} dégâts!`);
           
           if (target.stats.currentHealth <= 0) {
-            newState.messages.push(`${target.name} est vaincu!`);
+            newState.messages.push(`${target.name || 'Ennemi'} est vaincu!`);
             newState.enemies = state.enemies.filter(e => e.id !== target.id);
             newState.turnOrder = newState.turnOrder.filter(id => id !== target.id);
           }
@@ -96,10 +96,10 @@ export class CombatSystem {
           
           currentEntity.useAbility(ability, abilityTarget);
           
-          newState.messages.push(`${currentEntity.name} utilise ${ability.name} sur ${abilityTarget.name}!`);
+          newState.messages.push(`${currentEntity.name || 'Joueur'} utilise ${ability.name} sur ${abilityTarget.name || 'Ennemi'}!`);
           
           if (abilityTarget.stats.currentHealth <= 0) {
-            newState.messages.push(`${abilityTarget.name} est vaincu!`);
+            newState.messages.push(`${abilityTarget.name || 'Ennemi'} est vaincu!`);
             newState.enemies = state.enemies.filter(e => e.id !== abilityTarget.id);
             newState.turnOrder = newState.turnOrder.filter(id => id !== abilityTarget.id);
           }
@@ -122,31 +122,46 @@ export class CombatSystem {
       
     } else {
       // Tour d'un ennemi
-      currentEntity = state.enemies.find(e => e.id === currentEntityId)!;
+      const enemyEntity = state.enemies.find(e => e.id === currentEntityId);
+      
+      if (!enemyEntity) {
+        throw new Error("Entité ennemie introuvable");
+      }
+      
+      currentEntity = enemyEntity;
       
       // IA simple pour l'ennemi
       const selectedAbility = (currentEntity as Enemy).selectAbility();
-      target = state.player.soulBond;
       
-      currentEntity.useAbility(selectedAbility, target);
-      
-      newState.messages.push(`${currentEntity.name} utilise ${selectedAbility.name} sur ${target.name}!`);
-      
-      if (target.stats.currentHealth <= 0) {
-        newState.messages.push(`${target.name} est vaincu!`);
-        newState.combatEnded = true;
-        newState.playerWon = false;
+      if (state.player.soulBond) {
+        target = state.player.soulBond;
+        
+        currentEntity.useAbility(selectedAbility, target);
+        
+        newState.messages.push(`${currentEntity.name || 'Ennemi'} utilise ${selectedAbility.name} sur ${target.name || 'Joueur'}!`);
+        
+        if (target.stats.currentHealth <= 0) {
+          newState.messages.push(`${target.name || 'Joueur'} est vaincu!`);
+          newState.combatEnded = true;
+          newState.playerWon = false;
+        }
+      } else {
+        // Si pour une raison quelconque le joueur n'a pas d'esprit animal lié
+        newState.messages.push("L'ennemi ne peut pas attaquer car le joueur n'a pas d'esprit animal.");
       }
     }
     
     // Réduire le cooldown des capacités pour tous les combattants
-    const allCombatants = [state.player.soulBond, ...state.enemies];
+    const allCombatants = [state.player.soulBond, ...state.enemies].filter(Boolean);
+    
     allCombatants.forEach(combatant => {
-      combatant.abilities.forEach(ability => {
-        if (ability.currentCooldown > 0) {
-          ability.currentCooldown--;
-        }
-      });
+      if (combatant) {
+        combatant.abilities.forEach(ability => {
+          if (ability.currentCooldown > 0) {
+            ability.currentCooldown--;
+          }
+        });
+      }
     });
     
     // Passer au combattant suivant
