@@ -30,9 +30,12 @@ export class AnimalSpirit extends Entity implements Combatant {
     this.experience = 0;
   }
   
-  takeDamage(amount: number, type: ElementType): { damage: number; effectiveness: number } {
+  takeDamage(amount: number, type: DamageType): { damage: number; effectiveness: number } {
+    // Conversion de DamageType vers ElementType
+    const elementType = this.convertDamageTypeToElementType(type);
+    
     // Calcul des dégâts avec prise en compte des efficacités
-    const effectiveness = TypeEffectiveness[type][this.elementType];
+    const effectiveness = TypeEffectiveness[elementType][this.elementType];
     const adjustedDamage = Math.floor(amount * effectiveness);
     this.stats.currentHealth = Math.max(0, this.stats.currentHealth - adjustedDamage);
     
@@ -42,7 +45,7 @@ export class AnimalSpirit extends Entity implements Combatant {
     };
   }
   
-  useAbility(ability: Ability, target: Combatant): void {
+  useAbility(ability: Ability, target: Combatant): { damage: number; effectiveness: number } | void {
     if (ability.currentCooldown > 0) return;
     
     // Calcul des dégâts basé sur l'attaque et la puissance de la capacité
@@ -55,6 +58,20 @@ export class AnimalSpirit extends Entity implements Combatant {
     ability.currentCooldown = ability.cooldown;
     
     return result;
+  }
+  
+  // Ajouter cette méthode utilitaire dans la classe
+  private convertDamageTypeToElementType(damageType: DamageType): ElementType {
+    switch (damageType) {
+      case DamageType.Physical: return ElementType.Normal;
+      case DamageType.Fire: return ElementType.Fire;
+      case DamageType.Water: return ElementType.Water;
+      case DamageType.Earth: return ElementType.Earth;
+      case DamageType.Air: return ElementType.Air;
+      case DamageType.Light: return ElementType.Light;
+      case DamageType.Dark: return ElementType.Dark;
+      default: return ElementType.Normal;
+    }
   }
   
   evolve(): boolean {
