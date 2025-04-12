@@ -87,6 +87,7 @@ function generateTerrain(worldData: MapZone[][], width: number, height: number):
       const x = Math.floor(startX + dx * j) % width;
       const y = Math.floor(startY + dy * j) % height;
       
+      // Correction: S'assurer que les coordonnées sont valides
       if (x >= 0 && x < width && y >= 0 && y < height) {
         // Altitude décroissante en s'éloignant du centre de la chaîne
         const distFromCenter = Math.abs(j - length / 2) / (length / 2);
@@ -108,18 +109,21 @@ function generateTerrain(worldData: MapZone[][], width: number, height: number):
     // Ajouter un bassin océanique
     for (let y = centerY - radius; y <= centerY + radius; y++) {
       for (let x = centerX - radius; x <= centerX + radius; x++) {
+        // Correction: S'assurer que les coordonnées sont valides après modulo
         const safeX = ((x % width) + width) % width;
         const safeY = ((y % height) + height) % height;
         
-        // Distance au centre du cercle
-        const dist = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
-        
-        if (dist <= radius) {
-          // Plus profond au centre et moins profond aux bords
-          const depthFactor = 1 - (dist / radius);
-          const altitude = 20 - depthFactor * 20;
+        if (safeX >= 0 && safeX < width && safeY >= 0 && safeY < height) {
+          // Distance au centre du cercle
+          const dist = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
           
-          seedPoints.push({ x: safeX, y: safeY, altitude });
+          if (dist <= radius) {
+            // Plus profond au centre et moins profond aux bords
+            const depthFactor = 1 - (dist / radius);
+            const altitude = 20 - depthFactor * 20;
+            
+            seedPoints.push({ x: safeX, y: safeY, altitude });
+          }
         }
       }
     }
@@ -136,7 +140,10 @@ function generateTerrain(worldData: MapZone[][], width: number, height: number):
   
   // Initialiser le terrain à partir des points de départ
   for (const point of seedPoints) {
-    worldData[point.y][point.x].altitude = point.altitude;
+    // Correction: Vérifier que les coordonnées sont valides
+    if (point.x >= 0 && point.x < width && point.y >= 0 && point.y < height) {
+      worldData[point.y][point.x].altitude = point.altitude;
+    }
   }
   
   // Propager les valeurs aux tuiles adjacentes (plusieurs passes)
@@ -146,7 +153,9 @@ function generateTerrain(worldData: MapZone[][], width: number, height: number):
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         // Si c'est un point de départ, ne pas modifier
-        if (seedPoints.some(p => p.x === x && p.y === y)) continue;
+        if (seedPoints.some(p => p.x === x && p.y === y && p.x >= 0 && p.x < width && p.y >= 0 && p.y < height)) {
+          continue;
+        }
         
         // Calculer la valeur moyenne des voisins
         let totalAltitude = 0;
@@ -157,20 +166,25 @@ function generateTerrain(worldData: MapZone[][], width: number, height: number):
             const nx = ((x + dx) % width + width) % width;
             const ny = ((y + dy) % height + height) % height;
             
-            totalAltitude += worldData[ny][nx].altitude;
-            count++;
+            // Vérifier que les coordonnées sont valides
+            if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+              totalAltitude += worldData[ny][nx].altitude;
+              count++;
+            }
           }
         }
         
-        const avgAltitude = totalAltitude / count;
-        
-        // Ajouter un peu de bruit pour éviter un terrain trop lisse
-        const noise = (Math.random() - 0.5) * 5;
-        
-        tempWorldData[y][x].altitude = avgAltitude + noise;
-        
-        // S'assurer que l'altitude reste dans les limites
-        tempWorldData[y][x].altitude = Math.max(0, Math.min(100, tempWorldData[y][x].altitude));
+        if (count > 0) {
+          const avgAltitude = totalAltitude / count;
+          
+          // Ajouter un peu de bruit pour éviter un terrain trop lisse
+          const noise = (Math.random() - 0.5) * 5;
+          
+          tempWorldData[y][x].altitude = avgAltitude + noise;
+          
+          // S'assurer que l'altitude reste dans les limites
+          tempWorldData[y][x].altitude = Math.max(0, Math.min(100, tempWorldData[y][x].altitude));
+        }
       }
     }
     
@@ -223,12 +237,15 @@ function applyClimateRules(worldData: MapZone[][], width: number, height: number
           const nx = ((x + dx) % width + width) % width;
           const ny = ((y + dy) % height + height) % height;
           
-          // Si c'est de l'eau (altitude < 30)
-          if (worldData[ny][nx].altitude < 30) {
-            const distance = Math.sqrt(dx*dx + dy*dy);
-            if (distance <= searchRadius) {
-              isNearWater = true;
-              baseHumidity += 20 * (1 - distance / searchRadius);
+          // Vérifier que les coordonnées sont valides
+          if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+            // Si c'est de l'eau (altitude < 30)
+            if (worldData[ny][nx].altitude < 30) {
+              const distance = Math.sqrt(dx*dx + dy*dy);
+              if (distance <= searchRadius) {
+                isNearWater = true;
+                baseHumidity += 20 * (1 - distance / searchRadius);
+              }
             }
           }
         }
@@ -255,18 +272,23 @@ function smoothTransitions(worldData: MapZone[][], width: number, height: number
           const nx = ((x + dx) % width + width) % width;
           const ny = ((y + dy) % height + height) % height;
           
-          totalHumidity += worldData[ny][nx].humidity;
-          totalTemperature += worldData[ny][nx].temperature;
-          count++;
+          // Vérifier que les coordonnées sont valides
+          if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+            totalHumidity += worldData[ny][nx].humidity;
+            totalTemperature += worldData[ny][nx].temperature;
+            count++;
+          }
         }
       }
       
-      // Ajuster légèrement vers la moyenne
-      const avgHumidity = totalHumidity / count;
-      const avgTemperature = totalTemperature / count;
-      
-      tempWorldData[y][x].humidity = worldData[y][x].humidity * 0.7 + avgHumidity * 0.3;
-      tempWorldData[y][x].temperature = worldData[y][x].temperature * 0.7 + avgTemperature * 0.3;
+      if (count > 0) {
+        // Ajuster légèrement vers la moyenne
+        const avgHumidity = totalHumidity / count;
+        const avgTemperature = totalTemperature / count;
+        
+        tempWorldData[y][x].humidity = worldData[y][x].humidity * 0.7 + avgHumidity * 0.3;
+        tempWorldData[y][x].temperature = worldData[y][x].temperature * 0.7 + avgTemperature * 0.3;
+      }
     }
   }
   
@@ -462,10 +484,13 @@ function addRivers(map: MapTile[][], width: number, height: number, worldData: M
             const nx = (currentX + dx + width) % width;
             const ny = (currentY + dy + height) % height;
             
-            if (worldData[ny][nx].altitude < minAltitude) {
-              minAltitude = worldData[ny][nx].altitude;
-              nextX = nx;
-              nextY = ny;
+            // Vérifier que les coordonnées sont valides
+            if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+              if (worldData[ny][nx].altitude < minAltitude) {
+                minAltitude = worldData[ny][nx].altitude;
+                nextX = nx;
+                nextY = ny;
+              }
             }
           }
         }
@@ -604,7 +629,10 @@ function findPath(
       const x = Math.round(p1.x + dx * (step / steps));
       const y = Math.round(p1.y + dy * (step / steps));
       
-      finalPath.push({ x, y });
+      // Vérifier que les coordonnées sont valides
+      if (x >= 0 && x < width && y >= 0 && y < height) {
+        finalPath.push({ x, y });
+      }
     }
   }
   
@@ -615,17 +643,13 @@ function findPath(
 }
 
 // Ajouter des entités et des points d'intérêt
-// Remplacer la fonction addEntitiesAndPOIs qui est incomplète
 function addEntitiesAndPOIs(map: MapTile[][], width: number, height: number, worldData: MapZone[][]): void {
-    // Ajouter des villages/villes aux carrefours ou près des ressources
-    addSettlements(map, width, height, worldData);
-    
-    // Ajouter des ruines et structures anciennes
-    // addRuinsToMap(map, width, height, worldData);
-    
-    // // Ajouter des PNJ, trésors et autres entités
-    // addEntitiesToMap(map, width, height);
-  }
+  // Ajouter des villages/villes aux carrefours ou près des ressources
+  addSettlements(map, width, height, worldData);
+  
+  // Ajout de quelques trésors et objets
+  addTreasuresAndItems(map, width, height);
+}
 
 // Ajouter des villages et campements
 function addSettlements(map: MapTile[][], width: number, height: number, worldData: MapZone[][]): void {
@@ -644,7 +668,7 @@ function addSettlements(map: MapTile[][], width: number, height: number, worldDa
       const x = Math.floor(Math.random() * width);
       const y = Math.floor(Math.random() * height);
       
-      if (!map[y][x].walkable) continue;
+      if (y >= height || x >= width || !map[y][x].walkable) continue;
       
       // Calculer un score pour cet emplacement
       let score = 0;
@@ -663,20 +687,21 @@ function addSettlements(map: MapTile[][], width: number, height: number, worldDa
           const nx = (x + dx + width) % width;
           const ny = (y + dy + height) % height;
           
-          if (map[ny][nx].type === TileType.Water) {
-            hasWaterNearby = true;
-            // Plus proche est l'eau, mieux c'est
-            const distance = Math.sqrt(dx*dx + dy*dy);
-            score += 5 * (1 - distance / 3);
-          }
-          
-          if (map[ny][nx].type === TileType.Path) {
-            pathCount++;
+          if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+            if (map[ny][nx].type === TileType.Water) {
+              hasWaterNearby = true;
+              // Plus proche est l'eau, mieux c'est
+              const distance = Math.sqrt(dx*dx + dy*dy);
+              score += 5 * (1 - distance / 3);
+            }
+            
+            if (map[ny][nx].type === TileType.Path) {
+              pathCount++;
+            }
           }
         }
       }
-// Fin du code pour la fonction addSettlements
-
+      
       // Bonus pour la proximité des chemins
       if (pathCount > 0) {
         score += pathCount * 2;
@@ -735,7 +760,7 @@ function addSettlements(map: MapTile[][], width: number, height: number, worldDa
         const nx = (bestX + dx + width) % width;
         const ny = (bestY + dy + height) % height;
         
-        if (map[ny][nx].walkable) {
+        if (nx >= 0 && nx < width && ny >= 0 && ny < height && map[ny][nx].walkable) {
           map[ny][nx] = {
             type: TileType.Path,
             walkable: true,
@@ -743,6 +768,111 @@ function addSettlements(map: MapTile[][], width: number, height: number, worldDa
           };
         }
       }
+    }
+  }
+}
+
+// Ajouter des trésors et objets à la carte
+function addTreasuresAndItems(map: MapTile[][], width: number, height: number): void {
+  const numTreasures = Math.floor(width * height * 0.002); // 0.2% de la carte
+  const numItems = Math.floor(width * height * 0.004); // 0.4% de la carte
+  
+  // Ajouter des trésors
+  for (let i = 0; i < numTreasures; i++) {
+    let x, y;
+    let attempts = 0;
+    let placed = false;
+    
+    // Trouver un emplacement approprié
+    while (attempts < 50 && !placed) {
+      x = Math.floor(Math.random() * width);
+      y = Math.floor(Math.random() * height);
+      
+      // Vérifier que la position est valide et ne contient pas déjà une entité
+      if (x >= 0 && x < width && y >= 0 && y < height && 
+          map[y][x].walkable && 
+          !map[y][x].entity) {
+        
+        // Différents types de trésors selon l'environnement
+        let treasureName = 'Coffre au trésor';
+        let treasureValue = Math.floor(Math.random() * 5) + 1; // Valeur 1-5
+        
+        // Adapter le trésor au type de terrain
+        switch (map[y][x].type) {
+          case TileType.Ruins:
+            treasureName = 'Relique ancienne';
+            treasureValue += 2; // Valeur ajoutée pour les ruines
+            break;
+          case TileType.Mountain:
+            treasureName = 'Filon de minerai précieux';
+            treasureValue += 1;
+            break;
+          case TileType.Cave:
+            treasureName = 'Gemmes brillantes';
+            treasureValue += 3;
+            break;
+          case TileType.Forest:
+            treasureName = 'Champignons rares';
+            break;
+        }
+        
+        // Ajouter le trésor
+        map[y][x].entity = {
+          type: EntityType.Treasure,
+          id: `treasure-${i}`,
+          name: treasureName
+        };
+        
+        // Ajouter des attributs au trésor
+        map[y][x].attributes = {
+          ...map[y][x].attributes,
+          treasure: treasureValue,
+          hidden: Math.random() < 0.3 // 30% de chance d'être caché
+        };
+        
+        placed = true;
+      }
+      
+      attempts++;
+    }
+  }
+  
+  // Ajouter des objets utiles
+  const itemTypes = [
+    { name: 'Potion de soin', effect: 'Restaure 20 points de santé' },
+    { name: 'Antidote', effect: 'Guérit les empoisonnements' },
+    { name: 'Parchemin magique', effect: 'Contient un sort puissant' },
+    { name: 'Clé ancienne', effect: 'Pourrait ouvrir une porte secrète' },
+    { name: 'Carte au trésor', effect: 'Indique l\'emplacement d\'un trésor proche' }
+  ];
+  
+  for (let i = 0; i < numItems; i++) {
+    let x, y;
+    let attempts = 0;
+    let placed = false;
+    
+    while (attempts < 50 && !placed) {
+      x = Math.floor(Math.random() * width);
+      y = Math.floor(Math.random() * height);
+      
+      if (x >= 0 && x < width && y >= 0 && y < height && 
+          map[y][x].walkable && 
+          !map[y][x].entity) {
+        
+        const itemIndex = Math.floor(Math.random() * itemTypes.length);
+        const item = itemTypes[itemIndex];
+        
+        map[y][x].entity = {
+          type: EntityType.Item,
+          id: `item-${i}`,
+          name: item.name,
+          interaction: item.effect
+        };
+        
+        placed = true;
+      }
+      
+      attempts++;
     }
   }
 }

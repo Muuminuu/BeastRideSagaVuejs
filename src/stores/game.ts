@@ -6,7 +6,7 @@ import { EntityType, TileType } from '@/types';
 export const useGameStore = defineStore('game', {
   state: () => ({
     // État du jeu
-    mapSize: { width: 100, height: 80 }, // Carte beaucoup plus grande
+    mapSize: { width: 50, height: 40 }, // Carte plus petite pour éviter des problèmes de performance
     mapData: [] as MapTile[][],
     playerPosition: { x: 0, y: 0 } as Position,
     player: {
@@ -28,7 +28,7 @@ export const useGameStore = defineStore('game', {
   getters: {
     currentTile(): MapTile {
       const { x, y } = this.playerPosition;
-      if (this.mapData && this.mapData[y] && this.mapData[y][x]) {
+      if (this.mapData && this.mapData.length > 0 && this.mapData[y] && this.mapData[y][x]) {
         return this.mapData[y][x];
       }
       // Return a default tile if position is invalid
@@ -64,14 +64,14 @@ export const useGameStore = defineStore('game', {
       // Utiliser setTimeout pour permettre à l'interface de se mettre à jour
       setTimeout(() => {
         try {
-          // Générer la carte
+          // Générer la carte avec une taille plus gérable
           this.mapData = generateMap(this.mapSize.width, this.mapSize.height);
+          
+          // Initialiser les zones visibles et découvertes AVANT de trouver la position
+          this.initializeVisibility();
           
           // Initialiser la position du joueur (trouver un endroit marchable)
           this.findStartingPosition();
-          
-          // Initialiser les zones visibles et découvertes
-          this.initializeVisibility();
           
           // Initialiser le joueur
           this.player.position = this.playerPosition;
@@ -80,6 +80,9 @@ export const useGameStore = defineStore('game', {
           this.addMessage('Bienvenue dans Beast Ride Saga !');
           this.addMessage(`Vous commencez votre aventure dans ${this.currentTile.description ? this.currentTile.description.toLowerCase() : 'un nouvel endroit'}.`);
           
+          // Mettre à jour la visibilité initiale basée sur la position du joueur
+          this.updateVisibility();
+          
           this.gameInitialized = true;
           this.isLoadingMap = false;
         } catch (error) {
@@ -87,10 +90,18 @@ export const useGameStore = defineStore('game', {
           this.addMessage('Erreur lors de la génération du monde. Veuillez réessayer.');
           this.isLoadingMap = false;
         }
-      }, 100);
+      }, 500); // Augmenter le délai pour éviter les problèmes de timing
     },
     
     findStartingPosition() {
+      // S'assurer que mapData existe et a une taille valide
+      if (!this.mapData || this.mapData.length === 0 || !this.mapData[0]) {
+        console.error("La carte n'a pas été correctement générée");
+        // Définir une position par défaut
+        this.playerPosition = { x: 0, y: 0 };
+        return;
+      }
+      
       // Chercher un bon point de départ (près d'un chemin idéalement)
       let bestX = -1;
       let bestY = -1;
@@ -100,6 +111,11 @@ export const useGameStore = defineStore('game', {
       for (let attempts = 0; attempts < 100; attempts++) {
         const x = Math.floor(Math.random() * this.mapSize.width);
         const y = Math.floor(Math.random() * this.mapSize.height);
+        
+        // Éviter les erreurs d'accès au tableau
+        if (y < 0 || y >= this.mapData.length || x < 0 || x >= this.mapData[0].length) {
+          continue;
+        }
         
         if (!this.mapData[y][x].walkable) continue;
         
@@ -114,10 +130,11 @@ export const useGameStore = defineStore('game', {
         let hasNearbyNPC = false;
         for (let dy = -3; dy <= 3 && !hasNearbyNPC; dy++) {
           for (let dx = -3; dx <= 3 && !hasNearbyNPC; dx++) {
-            const nx = (x + dx + this.mapSize.width) % this.mapSize.width;
-            const ny = (y + dy + this.mapSize.height) % this.mapSize.height;
+            const nx = Math.min(Math.max(0, x + dx), this.mapSize.width - 1);
+            const ny = Math.min(Math.max(0, y + dy), this.mapSize.height - 1);
             
-            if (this.mapData[ny][nx].entity?.type === EntityType.NPC) {
+            if (this.mapData[ny] && this.mapData[ny][nx] && 
+                this.mapData[ny][nx].entity?.type === EntityType.NPC) {
               hasNearbyNPC = true;
               score += 5;
             }
@@ -150,8 +167,8 @@ export const useGameStore = defineStore('game', {
         // Sinon, chercher n'importe quelle zone marchable
         let found = false;
         
-        for (let y = 0; y < this.mapSize.height && !found; y++) {
-          for (let x = 0; x < this.mapSize.width && !found; x++) {
+        for (let y = 0; y < this.mapData.length && !found; y++) {
+          for (let x = 0; x < (this.mapData[y]?.length || 0) && !found; x++) {
             if (this.mapData[y][x].walkable) {
               this.playerPosition = { x, y };
               found = true;
@@ -162,8 +179,8 @@ export const useGameStore = defineStore('game', {
         // Si toujours pas trouvé (improbable), mettre au centre
         if (!found) {
           this.playerPosition = {
-            x: Math.floor(this.mapSize.width / 2),
-            y: Math.floor(this.mapSize.height / 2)
+            x: Math.min(Math.floor(this.mapSize.width / 2), this.mapData[0].length - 1),
+            y: Math.min(Math.floor(this.mapSize.height / 2), this.mapData.length - 1)
           };
         }
       }
@@ -174,11 +191,20 @@ export const useGameStore = defineStore('game', {
       this.visibleMap = [];
       this.discoveredAreas = [];
       
-      for (let y = 0; y < this.mapSize.height; y++) {
+      // S'assurer que la carte a été générée avant d'initialiser la visibilité
+      if (!this.mapData || this.mapData.length === 0) {
+        console.error("Impossible d'initialiser la visibilité car la carte n'est pas générée");
+        return;
+      }
+      
+      const height = this.mapData.length;
+      const width = this.mapData[0].length;
+      
+      for (let y = 0; y < height; y++) {
         const visibleRow: boolean[] = [];
         const discoveredRow: boolean[] = [];
         
-        for (let x = 0; x < this.mapSize.width; x++) {
+        for (let x = 0; x < width; x++) {
           visibleRow.push(false);
           discoveredRow.push(false);
         }
@@ -186,17 +212,28 @@ export const useGameStore = defineStore('game', {
         this.visibleMap.push(visibleRow);
         this.discoveredAreas.push(discoveredRow);
       }
-      
-      // Rendre visible la zone autour du joueur
-      this.updateVisibility();
     },
     
     updateVisibility() {
+      // Vérifier que les matrices sont initialisées
+      if (!this.visibleMap || !this.discoveredAreas || 
+          this.visibleMap.length === 0 || this.discoveredAreas.length === 0) {
+        console.error("Les matrices de visibilité ne sont pas initialisées");
+        return;
+      }
+      
       const { x: playerX, y: playerY } = this.playerPosition;
       
+      // Vérifier que la position du joueur est valide
+      if (playerY < 0 || playerY >= this.visibleMap.length || 
+          playerX < 0 || playerX >= this.visibleMap[0].length) {
+        console.error("Position du joueur invalide pour la mise à jour de la visibilité");
+        return;
+      }
+      
       // Mettre à jour la visibilité actuelle
-      for (let y = 0; y < this.mapSize.height; y++) {
-        for (let x = 0; x < this.mapSize.width; x++) {
+      for (let y = 0; y < this.visibleMap.length; y++) {
+        for (let x = 0; x < this.visibleMap[y].length; x++) {
           // Distance de Manhattan
           const distance = Math.abs(x - playerX) + Math.abs(y - playerY);
           
@@ -214,6 +251,12 @@ export const useGameStore = defineStore('game', {
     movePlayer(direction: Direction) {
       if (!this.canMove) return;
       
+      // Vérifier que la carte existe
+      if (!this.mapData || this.mapData.length === 0) {
+        console.error("Impossible de se déplacer car la carte n'est pas générée");
+        return;
+      }
+      
       const newPos = { ...this.playerPosition };
       
       switch (direction) {
@@ -221,18 +264,20 @@ export const useGameStore = defineStore('game', {
           newPos.y = Math.max(0, newPos.y - 1);
           break;
         case 'down':
-          newPos.y = Math.min(this.mapSize.height - 1, newPos.y + 1);
+          newPos.y = Math.min(this.mapData.length - 1, newPos.y + 1);
           break;
         case 'left':
           newPos.x = Math.max(0, newPos.x - 1);
           break;
         case 'right':
-          newPos.x = Math.min(this.mapSize.width - 1, newPos.x + 1);
+          newPos.x = Math.min((this.mapData[0] || []).length - 1, newPos.x + 1);
           break;
       }
       
-      // Vérifier si la nouvelle position est accessible
-      if (this.mapData[newPos.y][newPos.x].walkable) {
+      // Vérifier si la nouvelle position est valide et accessible
+      if (newPos.y >= 0 && newPos.y < this.mapData.length && 
+          newPos.x >= 0 && newPos.x < this.mapData[newPos.y].length && 
+          this.mapData[newPos.y][newPos.x].walkable) {
         // Mettre à jour la position
         this.playerPosition = newPos;
         this.player.position = newPos;
@@ -245,8 +290,11 @@ export const useGameStore = defineStore('game', {
         
         // Incrémenter le compteur de tours
         this.turnCount++;
-      } else {
+      } else if (newPos.y >= 0 && newPos.y < this.mapData.length && 
+                newPos.x >= 0 && newPos.x < this.mapData[newPos.y].length) {
         this.addMessage(`Vous ne pouvez pas aller par là. ${this.mapData[newPos.y][newPos.x].description}`);
+      } else {
+        this.addMessage("Vous ne pouvez pas aller dans cette direction.");
       }
     },
     
@@ -254,7 +302,9 @@ export const useGameStore = defineStore('game', {
       const currentTile = this.currentTile;
       
       // Décrire le nouvel environnement (seulement si c'est la première visite)
-      if (!this.discoveredAreas[this.playerPosition.y][this.playerPosition.x]) {
+      if (this.playerPosition.y >= 0 && this.playerPosition.y < this.discoveredAreas.length &&
+          this.playerPosition.x >= 0 && this.playerPosition.x < this.discoveredAreas[this.playerPosition.y].length &&
+          !this.discoveredAreas[this.playerPosition.y][this.playerPosition.x]) {
         this.addMessage(`Vous découvrez : ${currentTile.description}`);
       }
       
@@ -287,7 +337,7 @@ export const useGameStore = defineStore('game', {
             
             // Supprimer l'attribut trésor
             if (this.mapData[this.playerPosition.y][this.playerPosition.x].attributes) {
-              delete this.mapData[this.playerPosition.y][this.playerPosition.x].attributes.treasure;
+              delete this.mapData[this.playerPosition.y][this.playerPosition.x].attributes?.treasure;
             }
             break;
             
@@ -353,7 +403,7 @@ export const useGameStore = defineStore('game', {
           
           // Supprimer le trésor après l'avoir récupéré
           if (this.mapData[this.playerPosition.y][this.playerPosition.x].attributes) {
-            delete this.mapData[this.playerPosition.y][this.playerPosition.x].attributes.treasure;
+            delete this.mapData[this.playerPosition.y][this.playerPosition.x].attributes?.treasure;
           }
         }
       }
@@ -433,36 +483,55 @@ export const useGameStore = defineStore('game', {
     
     // Fonctions utilitaires supplémentaires
     getDiscoveredPercentage(): number {
-      let totalTiles = this.mapSize.width * this.mapSize.height;
+      if (!this.discoveredAreas || this.discoveredAreas.length === 0) {
+        return 0;
+      }
+      
+      let totalTiles = 0;
       let discoveredTiles = 0;
       
-      for (let y = 0; y < this.mapSize.height; y++) {
-        for (let x = 0; x < this.mapSize.width; x++) {
-          if (this.discoveredAreas[y][x]) {
-            discoveredTiles++;
+      // Parcourir la carte en vérifiant la validité des indices
+      for (let y = 0; y < this.discoveredAreas.length; y++) {
+        const row = this.discoveredAreas[y];
+        if (row) {
+          for (let x = 0; x < row.length; x++) {
+            totalTiles++;
+            if (row[x]) {
+              discoveredTiles++;
+            }
           }
         }
       }
       
+      if (totalTiles === 0) return 0;
       return Math.round((discoveredTiles / totalTiles) * 100);
     },
     
     getTileAt(x: number, y: number): MapTile | null {
-      if (x >= 0 && x < this.mapSize.width && y >= 0 && y < this.mapSize.height) {
+      if (!this.mapData || this.mapData.length === 0) return null;
+      
+      if (y >= 0 && y < this.mapData.length && 
+          x >= 0 && x < (this.mapData[y]?.length || 0)) {
         return this.mapData[y][x];
       }
       return null;
     },
     
     isTileVisible(x: number, y: number): boolean {
-      if (x >= 0 && x < this.mapSize.width && y >= 0 && y < this.mapSize.height) {
+      if (!this.visibleMap || this.visibleMap.length === 0) return false;
+      
+      if (y >= 0 && y < this.visibleMap.length && 
+          x >= 0 && x < (this.visibleMap[y]?.length || 0)) {
         return this.visibleMap[y][x];
       }
       return false;
     },
     
     isTileDiscovered(x: number, y: number): boolean {
-      if (x >= 0 && x < this.mapSize.width && y >= 0 && y < this.mapSize.height) {
+      if (!this.discoveredAreas || this.discoveredAreas.length === 0) return false;
+      
+      if (y >= 0 && y < this.discoveredAreas.length && 
+          x >= 0 && x < (this.discoveredAreas[y]?.length || 0)) {
         return this.discoveredAreas[y][x];
       }
       return false;
