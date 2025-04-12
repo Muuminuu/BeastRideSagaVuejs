@@ -1,13 +1,25 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
+import { useGameStore } from '@/stores/game'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: '/',
+      name: 'intro',
+      component: () => import('../views/IntroView.vue'),
+    },
+    {
+      path: '/world',
+      name: 'world',
+      component: () => import('../views/WorldView.vue'),
+      meta: { requiresPlayer: true }
+    },
+    {
+      path: '/combat',
       name: 'combat',
       component: () => import('../views/CombatView.vue'),
+      meta: { requiresPlayer: true }
     },
     {
       path: '/test-combat',
@@ -15,6 +27,18 @@ const router = createRouter({
       component: () => import('../views/TestCombatView.vue'),
     }
   ],
+})
+
+// Navigation guard to check if player exists for routes that require it
+router.beforeEach((to, from, next) => {
+  const gameStore = useGameStore()
+  
+  if (to.meta.requiresPlayer && !gameStore.player) {
+    // Redirect to intro if player doesn't exist
+    next({ name: 'intro' })
+  } else {
+    next()
+  }
 })
 
 export default router

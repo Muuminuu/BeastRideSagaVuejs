@@ -69,17 +69,40 @@ import type { CombatState, PlayerAction } from '@/core/systems/CombatSystem';
 import { Hero } from '@/core/entities/Hero';
 import { Enemy } from '@/core/entities/Enemy';
 import type { Ability } from '@/core/types/Ability';
+import { useGameStore, GameTime, Season } from '@/stores/game';
 
 export default defineComponent({
   name: 'CombatView',
   setup() {
     const router = useRouter();
+    const gameStore = useGameStore();
     const isReady = ref(false);
     const player = ref<Hero | null>(null);
     const enemies = ref<Enemy[]>([]);
-    const locationName = ref('Forêt Mystique');
-    const timeOfDay = ref('Jour');
-    const season = ref('Printemps');
+
+    const locationName = computed(() => {
+      return gameStore.currentRegion?.name || 'Zone inconnue';
+    });
+
+    const timeOfDay = computed(() => {
+      switch(gameStore.currentGameTime) {
+        case GameTime.Morning: return 'Matin';
+        case GameTime.Afternoon: return 'Après-midi';
+        case GameTime.Evening: return 'Soir';
+        case GameTime.Night: return 'Nuit';
+        default: return 'Jour';
+      }
+    })
+
+    const season = computed(() => {
+      switch(gameStore.currentSeason) {
+        case Season.Spring: return 'Printemps';
+        case Season.Summer: return 'Été';
+        case Season.Autumn: return 'Automne';
+        case Season.Winter: return 'Hiver';
+        default: return 'Saison inconnue';
+      }
+    });
     
     const combatSystem = new CombatSystem();
     const combatState = ref<CombatState | null>(null);
@@ -88,7 +111,8 @@ export default defineComponent({
     // Chargement des données
     onMounted(() => {
       try {
-        // Dans une application réelle, utilisez Pinia au lieu de localStorage
+        // Dans une application réelle, vous pourriez passer directement les données depuis le store
+        // au lieu d'utiliser localStorage
         const storedPlayer = localStorage.getItem('combatPlayer');
         const storedEnemies = localStorage.getItem('combatEnemies');
         
@@ -206,12 +230,24 @@ export default defineComponent({
     }
     
     function endCombat() {
+      // Gain d'expérience si victoire
+      if (combatState.value?.playerWon && gameStore.player?.soulBond) {
+        const spirit = gameStore.player.soulBond;
+
+        const expGain = 10 * (gameStore.currentRegion?.dangerLevel || 1);
+        spirit.experience += expGain;
+
+        // Gérer la montée de niveau
+        
+        gameStore.saveGame();
+      }
+
       // Nettoyer les données du combat
       localStorage.removeItem('combatPlayer');
       localStorage.removeItem('combatEnemies');
       
       // Rediriger vers une autre page
-      router.push('/');
+      router.push('/world');
     }
     
     return {
