@@ -1,7 +1,7 @@
 import { Entity } from './Entity';
-import { Combatant } from '../types/Interfaces';
-import { Stats } from '../types/Stats';
-import { Ability } from '../types/Ability';
+import type { Combatant } from '../types/Interfaces';
+import type { Stats } from '../types/Stats';
+import type { Ability } from '../types/Ability';
 import { AnimalType, DamageType, GrowthStage } from '../types/Enums';
 
 export class AnimalSpirit extends Entity implements Combatant {

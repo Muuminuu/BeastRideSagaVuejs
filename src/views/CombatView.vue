@@ -64,10 +64,10 @@
   import { defineComponent, ref, computed, onMounted } from 'vue';
   import { useRouter } from 'vue-router';
   import { ActionType } from '@/core/types/Enums';
-  import { CombatSystem, CombatState, PlayerAction } from '@/core/systems/CombatSystem';
+  import type { CombatSystem, CombatState, PlayerAction } from '@/core/systems/CombatSystem';
   import { Hero } from '@/core/entities/Hero';
   import { Enemy } from '@/core/entities/Enemy';
-  import { Ability } from '@/core/types/Ability';
+  import type { Ability } from '@/core/types/Ability';
   
   export default defineComponent({
     name: 'CombatView',

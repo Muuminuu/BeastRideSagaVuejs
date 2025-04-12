@@ -1,6 +1,6 @@
 import { DamageType } from './Enums';
-import { Stats } from './Stats';
-import { Ability } from './Ability';
+import type { Stats } from './Stats';
+import type { Ability } from './Ability';
 
 export interface Combatant {
   stats: Stats;

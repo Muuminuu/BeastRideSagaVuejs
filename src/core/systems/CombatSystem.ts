@@ -1,7 +1,7 @@
 import { Hero } from '../entities/Hero';
 import { Enemy } from '../entities/Enemy';
-import { Ability } from '../types/Ability';
-import { Combatant } from '../types/Interfaces';
+import type { Ability } from '../types/Ability';
+import type { Combatant } from '../types/Interfaces';
 import { ActionType } from '../types/Enums';
 
 export interface CombatState {

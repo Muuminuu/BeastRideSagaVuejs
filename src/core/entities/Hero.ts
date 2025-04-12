@@ -1,5 +1,5 @@
 import { Character } from './Character';
-import { Stats } from '../types/Stats';
+import type { Stats } from '../types/Stats';
 import { AnimalSpirit } from './AnimalSpirit';
 
 export class Hero extends Character {

@@ -12,7 +12,7 @@
   import { Enemy } from '@/core/entities/Enemy';
   import { AnimalSpirit } from '@/core/entities/AnimalSpirit';
   import { AnimalType, EnemyType } from '@/core/types/Enums';
-  import { Ability } from '@/core/types/Ability';
+  import type { Ability } from '@/core/types/Ability';
   
   export default defineComponent({
     name: 'TestCombatView',
