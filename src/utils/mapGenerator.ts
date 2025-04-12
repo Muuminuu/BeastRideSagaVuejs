@@ -84,6 +84,7 @@ function generateTerrain(worldData: MapZone[][], width: number, height: number):
     
     // Créer la chaîne de montagnes
     for (let j = 0; j < length; j++) {
+      // Utiliser Math.floor pour s'assurer que les coordonnées sont des nombres entiers
       const x = Math.floor(startX + dx * j) % width;
       const y = Math.floor(startY + dy * j) % height;
       
@@ -109,13 +110,14 @@ function generateTerrain(worldData: MapZone[][], width: number, height: number):
     // Ajouter un bassin océanique
     for (let y = centerY - radius; y <= centerY + radius; y++) {
       for (let x = centerX - radius; x <= centerX + radius; x++) {
-        // Correction: S'assurer que les coordonnées sont valides après modulo
-        const safeX = ((x % width) + width) % width;
-        const safeY = ((y % height) + height) % height;
+        // Calcul correct des coordonnées avec modulo pour éviter les débordements
+        // S'assurer que les valeurs sont des entiers en utilisant Math.floor
+        const safeX = Math.floor(((x % width) + width) % width);
+        const safeY = Math.floor(((y % height) + height) % height);
         
         if (safeX >= 0 && safeX < width && safeY >= 0 && safeY < height) {
           // Distance au centre du cercle
-          const dist = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
+          const dist = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
           
           if (dist <= radius) {
             // Plus profond au centre et moins profond aux bords
@@ -140,8 +142,9 @@ function generateTerrain(worldData: MapZone[][], width: number, height: number):
   
   // Initialiser le terrain à partir des points de départ
   for (const point of seedPoints) {
-    // Correction: Vérifier que les coordonnées sont valides
+    // S'assurer que les coordonnées sont des entiers valides
     if (point.x >= 0 && point.x < width && point.y >= 0 && point.y < height) {
+      // Utilisation de coordonnées entières uniquement
       worldData[point.y][point.x].altitude = point.altitude;
     }
   }
@@ -153,7 +156,7 @@ function generateTerrain(worldData: MapZone[][], width: number, height: number):
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         // Si c'est un point de départ, ne pas modifier
-        if (seedPoints.some(p => p.x === x && p.y === y && p.x >= 0 && p.x < width && p.y >= 0 && p.y < height)) {
+        if (seedPoints.some(p => p.x === x && p.y === y)) {
           continue;
         }
         
@@ -163,8 +166,9 @@ function generateTerrain(worldData: MapZone[][], width: number, height: number):
         
         for (let dy = -1; dy <= 1; dy++) {
           for (let dx = -1; dx <= 1; dx++) {
-            const nx = ((x + dx) % width + width) % width;
-            const ny = ((y + dy) % height + height) % height;
+            // S'assurer que les coordonnées sont des entiers en utilisant Math.floor
+            const nx = Math.floor(((x + dx) % width + width) % width);
+            const ny = Math.floor(((y + dy) % height + height) % height);
             
             // Vérifier que les coordonnées sont valides
             if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
@@ -234,8 +238,9 @@ function applyClimateRules(worldData: MapZone[][], width: number, height: number
       
       for (let dy = -searchRadius; dy <= searchRadius && !isNearWater; dy++) {
         for (let dx = -searchRadius; dx <= searchRadius && !isNearWater; dx++) {
-          const nx = ((x + dx) % width + width) % width;
-          const ny = ((y + dy) % height + height) % height;
+          // S'assurer que les coordonnées sont des entiers en utilisant Math.floor
+          const nx = Math.floor(((x + dx) % width + width) % width);
+          const ny = Math.floor(((y + dy) % height + height) % height);
           
           // Vérifier que les coordonnées sont valides
           if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
@@ -269,8 +274,9 @@ function smoothTransitions(worldData: MapZone[][], width: number, height: number
       // Calculer la moyenne des voisins
       for (let dy = -2; dy <= 2; dy++) {
         for (let dx = -2; dx <= 2; dx++) {
-          const nx = ((x + dx) % width + width) % width;
-          const ny = ((y + dy) % height + height) % height;
+          // S'assurer que les coordonnées sont des entiers en utilisant Math.floor
+          const nx = Math.floor(((x + dx) % width + width) % width);
+          const ny = Math.floor(((y + dy) % height + height) % height);
           
           // Vérifier que les coordonnées sont valides
           if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
@@ -481,8 +487,9 @@ function addRivers(map: MapTile[][], width: number, height: number, worldData: M
           for (let dx = -1; dx <= 1; dx++) {
             if (dx === 0 && dy === 0) continue;
             
-            const nx = (currentX + dx + width) % width;
-            const ny = (currentY + dy + height) % height;
+            // S'assurer que les coordonnées sont des entiers en utilisant Math.floor
+            const nx = Math.floor((currentX + dx + width) % width);
+            const ny = Math.floor((currentY + dy + height) % height);
             
             // Vérifier que les coordonnées sont valides
             if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
@@ -531,6 +538,7 @@ function addPaths(map: MapTile[][], width: number, height: number): void {
       const angle = Math.random() * Math.PI * 2;
       const distance = Math.floor(Math.random() * (width / 3)) + (width / 6);
       
+      // S'assurer que les coordonnées sont des entiers en utilisant Math.floor
       endX = Math.floor(startX + Math.cos(angle) * distance);
       endY = Math.floor(startY + Math.sin(angle) * distance);
       
@@ -597,6 +605,7 @@ function findPath(
     
     // Ajouter de l'aléatoire
     const randomDeviation = Math.min(width, height) / 15;
+    // S'assurer que les coordonnées sont des entiers en utilisant Math.floor
     currentX = Math.floor(targetX + (Math.random() - 0.5) * randomDeviation);
     currentY = Math.floor(targetY + (Math.random() - 0.5) * randomDeviation);
     
@@ -626,6 +635,7 @@ function findPath(
     const steps = Math.max(Math.abs(dx), Math.abs(dy));
     
     for (let step = 1; step < steps; step++) {
+      // S'assurer que les coordonnées sont des entiers en utilisant Math.round
       const x = Math.round(p1.x + dx * (step / steps));
       const y = Math.round(p1.y + dy * (step / steps));
       
@@ -684,8 +694,9 @@ function addSettlements(map: MapTile[][], width: number, height: number, worldDa
       
       for (let dy = -3; dy <= 3; dy++) {
         for (let dx = -3; dx <= 3; dx++) {
-          const nx = (x + dx + width) % width;
-          const ny = (y + dy + height) % height;
+          // S'assurer que les coordonnées sont des entiers en utilisant Math.floor
+          const nx = Math.floor((x + dx + width) % width);
+          const ny = Math.floor((y + dy + height) % height);
           
           if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
             if (map[ny][nx].type === TileType.Water) {
@@ -757,8 +768,9 @@ function addSettlements(map: MapTile[][], width: number, height: number, worldDa
         
         if (dx === 0 && dy === 0) continue;
         
-        const nx = (bestX + dx + width) % width;
-        const ny = (bestY + dy + height) % height;
+        // S'assurer que les coordonnées sont des entiers en utilisant Math.floor
+        const nx = Math.floor((bestX + dx + width) % width);
+        const ny = Math.floor((bestY + dy + height) % height);
         
         if (nx >= 0 && nx < width && ny >= 0 && ny < height && map[ny][nx].walkable) {
           map[ny][nx] = {
@@ -779,7 +791,7 @@ function addTreasuresAndItems(map: MapTile[][], width: number, height: number): 
   
   // Ajouter des trésors
   for (let i = 0; i < numTreasures; i++) {
-    let x, y;
+    let x = 0, y = 0;
     let attempts = 0;
     let placed = false;
     
@@ -847,7 +859,7 @@ function addTreasuresAndItems(map: MapTile[][], width: number, height: number): 
   ];
   
   for (let i = 0; i < numItems; i++) {
-    let x, y;
+    let x = 0, y = 0;
     let attempts = 0;
     let placed = false;
     

@@ -6,7 +6,7 @@ import { EntityType, TileType } from '@/types';
 export const useGameStore = defineStore('game', {
   state: () => ({
     // État du jeu
-    mapSize: { width: 50, height: 40 }, // Carte plus petite pour éviter des problèmes de performance
+    mapSize: { width: 30, height: 25 }, // Carte plus petite pour éviter des problèmes de performance
     mapData: [] as MapTile[][],
     playerPosition: { x: 0, y: 0 } as Position,
     player: {
@@ -61,7 +61,7 @@ export const useGameStore = defineStore('game', {
       this.isLoadingMap = true;
       this.addMessage('Génération du monde en cours...');
       
-      // Utiliser setTimeout pour permettre à l'interface de se mettre à jour
+      // Utiliser setTimeout pour permettre à l'interface de se mettre à jour et donner plus de temps pour la génération
       setTimeout(() => {
         try {
           // Générer la carte avec une taille plus gérable
@@ -90,7 +90,7 @@ export const useGameStore = defineStore('game', {
           this.addMessage('Erreur lors de la génération du monde. Veuillez réessayer.');
           this.isLoadingMap = false;
         }
-      }, 500); // Augmenter le délai pour éviter les problèmes de timing
+      }, 1000); // Augmenter le délai pour éviter les problèmes de timing
     },
     
     findStartingPosition() {
