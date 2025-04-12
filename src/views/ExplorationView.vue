@@ -68,7 +68,7 @@
                 @click="useService(service)"
                 class="service-button"
               >
-                {{ getServiceName(service) }}
+                {{ getServiceName(service as ServiceType) }}
               </button>
             </div>
           </div>
@@ -549,8 +549,10 @@ import type {
   }
   
   function useService(service: string) {
+
+    const validService = service as ServiceType;
     // Logique pour utiliser les différents services des villes/villages
-    const serviceName = getServiceName(service)
+    const serviceName = getServiceName(validService)
     
     eventModalTitle.value = serviceName
     eventModalDescription.value = `Fonctionnalité "${serviceName}" à venir !`
@@ -640,7 +642,7 @@ import type {
   }
   
   function getServiceName(service: ServiceType): string {
-    const names: Record<string, string> = {
+    const names: Record<ServiceType, string> = {
       'inn': 'Auberge',
       'shop': 'Magasin',
       'blacksmith': 'Forge',

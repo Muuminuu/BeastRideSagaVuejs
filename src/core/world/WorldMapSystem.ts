@@ -686,8 +686,9 @@ export interface PointOfInterest {
             discovered: false,
             explored: false,
             services: isTown ? 
-              ['inn', 'shop', 'blacksmith', 'temple'] : 
-              ['inn', ...(Math.random() < 0.5 ? ['shop'] : []), ...(Math.random() < 0.3 ? ['blacksmith'] : [])]
+                ['inn', 'shop', 'blacksmith', 'temple'] as ServiceType[] : 
+                ['inn', ...(Math.random() < 0.5 ? ['shop' as ServiceType] : []), 
+                        ...(Math.random() < 0.3 ? ['blacksmith' as ServiceType] : [])] as ServiceType[]
           });
           
           // Marquer cette case comme ayant un point d'intérêt

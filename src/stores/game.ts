@@ -63,7 +63,7 @@ interface InventoryItem {
 export const useGameStore = defineStore('game', () => {
   // État du jeu
   const player = ref<Hero | null>(null)
-  const worldMap = ref<WorldMapType | null>(null)
+  const worldMap = ref<WorldMap | null>(null)
   const inventory = ref<InventoryItem[]>([])
   const gold = ref(0)
   
