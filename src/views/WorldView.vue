@@ -273,22 +273,24 @@
     
     return description
   }
+
+  function isRegionAdjacent(region: WorldRegion): boolean {
+    return worldRegions.value.some(r => 
+        r.explored && 
+        areRegionsAdjacent(r, region)
+    )
+  }
   
   function moveToRegion(regionId: string) {
-    // Only allow movement to adjacent or explored regions
+    currentRegionId.value = regionId
     const region = worldRegions.value.find(r => r.id === regionId)
-    if (!region) return
     
-    const currentPosition = gameStore.currentPosition
-    const isAdjacent = (
-      (Math.abs(region.position.x - currentPosition.x) === 1 && region.position.y === currentPosition.y) ||
-      (Math.abs(region.position.y - currentPosition.y) === 1 && region.position.x === currentPosition.x)
-    )
-    
-    if (region.explored || isAdjacent) {
-      gameStore.moveToRegion(region.id)
-      // Time passes when traveling
-      gameStore.advanceTime()
+    if (region) {
+      // Mise à jour de la position courante
+      currentPosition.value = region.position
+      
+      // Marquer la région comme explorée
+      region.explored = true
     }
   }
   

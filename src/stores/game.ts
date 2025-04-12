@@ -64,6 +64,15 @@ export const useGameStore = defineStore('game', () => {
   // État du jeu
   const player = ref<Hero | null>(null)
   const worldMap = ref<WorldMap | null>(null)
+
+  const worldRegions = ref<WorldRegion[]>([])
+  const currentRegionId = ref<string>('')
+  const currentPosition = ref({ x: 0, y: 0 })
+
+  const currentRegion = computed(() => {
+    return worldRegions.value.find(r => r.id === currentRegionId.value) || null
+  })
+
   const inventory = ref<InventoryItem[]>([])
   const gold = ref(0)
   
@@ -100,7 +109,7 @@ export const useGameStore = defineStore('game', () => {
     player.value = newPlayer
   }
   
-  function setWorldMap(newMap: WorldMapType) {
+  function setWorldMap(newMap: WorldMap) {
     worldMap.value = newMap
   }
   
