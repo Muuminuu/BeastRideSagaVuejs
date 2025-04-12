@@ -12,7 +12,7 @@ export abstract class Character extends Entity implements Combatant {
 
     constructor(id:string, name:string, stats:Stats) {
         super(id, name);
-        this.stats = Stats;
+        this.stats = stats;
         this.abilities = [];
         this.level = 1;
         this.experience = 0;
