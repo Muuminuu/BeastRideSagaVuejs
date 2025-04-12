@@ -40,7 +40,7 @@
   </template>
     
   <script lang="ts">
-  import { defineComponent, computed, ref, watch } from 'vue';
+  import { defineComponent, computed, ref, watch, onUnmounted } from 'vue'; // Ajout de onUnmounted ici
   import type { PropType } from 'vue';
   import type { MapTile, Position, Direction } from '@/types';
   import { useGameStore } from '@/stores/game';

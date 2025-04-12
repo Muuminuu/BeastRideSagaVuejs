@@ -78,7 +78,7 @@ export const useGameStore = defineStore('game', {
           
           // Ajouter un message initial
           this.addMessage('Bienvenue dans Beast Ride Saga !');
-          this.addMessage(`Vous commencez votre aventure dans ${this.currentTile.description.toLowerCase()}.`);
+          this.addMessage(`Vous commencez votre aventure dans ${this.currentTile.description ? this.currentTile.description.toLowerCase() : 'un nouvel endroit'}.`);
           
           this.gameInitialized = true;
           this.isLoadingMap = false;
@@ -333,7 +333,7 @@ export const useGameStore = defineStore('game', {
           // Vérifier si le joueur est mort
           if (this.player.health <= 0) {
             this.player.health = 0;
-            this.addMessage('Vous avez succombé à vos blessures. Votre aventure s'arrête ici.');
+            this.addMessage('Vous avez succombé à vos blessures. Votre aventure s\'arrête ici.');
             // Logique de game over à implémenter
           }
         }
@@ -344,7 +344,9 @@ export const useGameStore = defineStore('game', {
           this.addMessage(`Vous gagnez ${experience} points d'expérience en découvrant cette zone !`);
           
           // Supprimer le trésor après l'avoir récupéré
-          delete this.mapData[this.playerPosition.y][this.playerPosition.x].attributes.treasure;
+          if (this.mapData[this.playerPosition.y][this.playerPosition.x].attributes) {
+            delete this.mapData[this.playerPosition.y][this.playerPosition.x].attributes.treasure;
+          }
         }
       }
       
@@ -369,7 +371,7 @@ export const useGameStore = defineStore('game', {
         case TileType.Ice:
           // Chance de glisser sur la glace
           if (Math.random() < 0.2) {
-            this.addMessage('Vous glissez sur la surface glacée mais réussissez à garder l'équilibre.');
+            this.addMessage('Vous glissez sur la surface glacée mais réussissez à garder l\'équilibre.');
           }
           break;
           
@@ -384,6 +386,10 @@ export const useGameStore = defineStore('game', {
               id: `treasure-ruin-${Date.now()}`,
               name: 'Relique ancienne'
             };
+            
+            if (!this.mapData[this.playerPosition.y][this.playerPosition.x].attributes) {
+              this.mapData[this.playerPosition.y][this.playerPosition.x].attributes = {};
+            }
             
             this.mapData[this.playerPosition.y][this.playerPosition.x].attributes = {
               ...this.mapData[this.playerPosition.y][this.playerPosition.x].attributes,

@@ -490,7 +490,10 @@ function addPaths(map: MapTile[][], width: number, height: number): void {
   
   for (let i = 0; i < numPaths; i++) {
     // Choisir deux points aléatoires sur la carte (assez espacés)
-    let startX, startY, endX, endY;
+    let startX = 0;
+    let startY = 0;
+    let endX = 0;
+    let endY = 0;
     let validPoints = false;
     let attempts = 0;
     
@@ -616,10 +619,10 @@ function addEntitiesAndPOIs(map: MapTile[][], width: number, height: number, wor
   addSettlements(map, width, height, worldData);
   
   // Ajouter des ruines et structures anciennes
-  addRuins(map, width, height, worldData);
+  addRuinsToMap(map, width, height, worldData);
   
   // Ajouter des PNJ, trésors et autres entités
-  addEntities(map, width, height);
+  addEntitiesToMap(map, width, height);
 }
 
 // Ajouter des villages et campements
@@ -670,10 +673,3 @@ function addSettlements(map: MapTile[][], width: number, height: number, worldDa
           }
         }
       }
-      
-      // Bonus pour la proximité d'eau
-      if (hasWaterNearby) {
-        score += 5;
-      }
-      
-      //
